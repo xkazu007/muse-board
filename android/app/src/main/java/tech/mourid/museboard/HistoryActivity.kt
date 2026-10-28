@@ -33,7 +33,7 @@ class HistoryActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
-        findViewById<View>(R.id.history_back).setOnClickListener { finish() }
+        findViewById<View>(R.id.history_back).onTap { finish() }
         BoardCache.loadTasks(this)?.let { render(it) }
     }
 
@@ -71,6 +71,7 @@ class HistoryActivity : Activity() {
         findViewById<View>(R.id.history_empty).visibility = if (done.isEmpty()) View.VISIBLE else View.GONE
         val inflater = LayoutInflater.from(this)
         var lastDay: Long? = null
+        var card: LinearLayout? = null
         for ((task, at) in done) {
             val day = dayOf(at)
             if (day != lastDay) {
@@ -78,14 +79,15 @@ class HistoryActivity : Activity() {
                 list.addView(TextView(this).apply {
                     text = dayLabel(task.completedAt)
                     setTextColor(getColor(R.color.mb_muted))
-                    textSize = 13f
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
                     val dp = resources.displayMetrics.density
-                    setPadding((4 * dp).toInt(), ((if (list.childCount == 0) 8 else 20) * dp).toInt(), 0, 0)
+                    setPadding((8 * dp).toInt(), ((if (list.childCount == 0) 8 else 20) * dp).toInt(), 0, (8 * dp).toInt())
                 })
+                card = newListCard(list)
             }
-            val row = inflater.inflate(R.layout.item_task, list, false) as SwipeRow
+            val row = inflater.inflate(R.layout.item_task, card, false) as SwipeRow
             row.rightColor = getColor(R.color.mb_primary)
-            row.cornerRadius = resources.getDimension(R.dimen.mb_app_row_radius)
             row.findViewById<TextView>(R.id.task_title).apply {
                 text = task.title
                 alpha = 0.75f
@@ -94,7 +96,7 @@ class HistoryActivity : Activity() {
             row.findViewById<TextView>(R.id.swipe_label_start).setText(R.string.reopen)
             row.onSwipeRight = { reopen(task) }
             row.findViewById<View>(R.id.task_row).apply {
-                setOnClickListener { startActivity(TaskActivity.intent(this@HistoryActivity, task)) }
+                onTap { startActivity(TaskActivity.intent(this@HistoryActivity, task)) }
                 setOnLongClickListener {
                     ActionSheet(this@HistoryActivity, task.title)
                         .add(R.drawable.mb_ic_undo24, getString(R.string.reopen)) { reopen(task) }
@@ -102,7 +104,7 @@ class HistoryActivity : Activity() {
                     true
                 }
             }
-            list.addView(row)
+            card?.let { addCardRow(it, row) }
         }
     }
 

@@ -33,6 +33,8 @@ data class BoardTask(
     /** The detail page's blocks (text, buttons, checks…), as JSON array
      *  text; null when there are none. See TaskBlocks. */
     val blocks: String? = null,
+    /** Realistic minutes for the whole task ("~15 min"); null = not set. */
+    val estimateMin: Int? = null,
 )
 
 data class BoardResponse(
@@ -71,6 +73,7 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     url = obj.stringOrNull("url"),
     group = obj.stringOrNull("group"),
     blocks = obj.optJSONArray("blocks")?.takeIf { it.length() > 0 }?.toString(),
+    estimateMin = if (obj.isNull("estimate_min")) null else obj.optInt("estimate_min").takeIf { it > 0 },
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -101,6 +104,7 @@ fun BoardTask.toJson(): JSONObject = JSONObject()
     .put("url", url ?: JSONObject.NULL)
     .put("group", group ?: JSONObject.NULL)
     .put("blocks", blocks?.let { JSONArray(it) } ?: JSONArray())
+    .put("estimate_min", estimateMin ?: JSONObject.NULL)
 
 fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     date = obj.optString("date", ""),
@@ -182,8 +186,8 @@ fun formatDue(iso: String?): String {
     return casablanca("EEE d MMM, HH:mm").format(Date(t))
 }
 
-/** The focus line above the step: "Now · 21:00 · desk", else the
- *  deadline ("Now · by 23:59"). */
+/** The focus line above the step: "Now · 21:00 · desk · ~15 min", else
+ *  the deadline ("Now · by 23:59"). Sentence case, never caps. */
 fun focusMeta(task: BoardTask): String {
     val parts = mutableListOf("Now")
     when {
@@ -191,7 +195,15 @@ fun focusMeta(task: BoardTask): String {
         task.dueAt != null -> parts.add("by " + formatWhen(task.dueAt))
     }
     task.planWhere?.let { parts.add(it) }
+    task.estimateMin?.let { parts.add("~" + formatMinutes(it)) }
     return parts.filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/** 15 → "15 min", 60 → "1 h", 90 → "1 h 30". */
+fun formatMinutes(min: Int): String = when {
+    min < 60 -> "$min min"
+    min % 60 == 0 -> "${min / 60} h"
+    else -> "${min / 60} h ${(min % 60).toString().padStart(2, '0')}"
 }
 
 /** "NutriSynth prep, Fri 12:00" for the "Then:" line. */

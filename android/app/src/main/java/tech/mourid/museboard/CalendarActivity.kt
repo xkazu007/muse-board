@@ -40,11 +40,11 @@ class CalendarActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
-        findViewById<View>(R.id.cal_back).setOnClickListener { finish() }
-        findViewById<View>(R.id.cal_mode_month).setOnClickListener { weekMode = false; render() }
-        findViewById<View>(R.id.cal_mode_week).setOnClickListener { weekMode = true; render() }
-        findViewById<View>(R.id.cal_prev).setOnClickListener { move(-1) }
-        findViewById<View>(R.id.cal_next).setOnClickListener { move(1) }
+        findViewById<View>(R.id.cal_back).onTap { finish() }
+        findViewById<View>(R.id.cal_mode_month).onTap { weekMode = false; render() }
+        findViewById<View>(R.id.cal_mode_week).onTap { weekMode = true; render() }
+        findViewById<View>(R.id.cal_prev).onTap { move(-1) }
+        findViewById<View>(R.id.cal_next).onTap { move(1) }
         tasks = BoardCache.loadTasks(this).orEmpty()
         render()
     }
@@ -114,7 +114,8 @@ class CalendarActivity : Activity() {
                 if (items.isEmpty()) continue
                 any = true
                 list.addView(sectionLabel(fmt("EEEE d MMM", day)))
-                items.forEach { list.addView(taskRow(it)) }
+                val card = newListCard(list)
+                items.forEach { addCardRow(card, taskRow(it)) }
             }
             if (!any) list.addView(note(getString(R.string.cal_nothing)))
             return
@@ -127,7 +128,10 @@ class CalendarActivity : Activity() {
         dayLabelView.text = fmt("EEEE d MMM", cursor)
         val items = days[dayOf(cursor.timeInMillis)].orEmpty()
         if (items.isEmpty()) list.addView(note(getString(R.string.cal_nothing)))
-        items.forEach { list.addView(taskRow(it)) }
+        if (items.isNotEmpty()) {
+            val card = newListCard(list)
+            items.forEach { addCardRow(card, taskRow(it)) }
+        }
     }
 
     private fun buildMonth(month: LinearLayout, days: Map<Long, List<BoardTask>>) {
@@ -168,7 +172,7 @@ class CalendarActivity : Activity() {
             background = getDrawable(R.drawable.mb_ripple_rounded)
             alpha = if (inMonth) 1f else 0.35f
             contentDescription = fmt("EEEE d MMMM", day)
-            setOnClickListener {
+            onTap {
                 cursor.timeInMillis = day.timeInMillis
                 render()
             }
@@ -214,8 +218,11 @@ class CalendarActivity : Activity() {
             visibility = if (detail == null) View.GONE else View.VISIBLE
         }
         val at = parseIso(task.planAt ?: task.dueAt)
-        row.findViewById<TextView>(R.id.task_when).text = at?.let { clockTime(it) }.orEmpty()
-        row.findViewById<View>(R.id.task_row).setOnClickListener {
+        row.findViewById<TextView>(R.id.task_when).text = listOfNotNull(
+            at?.let { clockTime(it) },
+            task.estimateMin?.let { "~" + formatMinutes(it) },
+        ).joinToString("\n")
+        row.findViewById<View>(R.id.task_row).onTap {
             startActivity(TaskActivity.intent(this, task))
         }
         return row
@@ -224,8 +231,9 @@ class CalendarActivity : Activity() {
     private fun sectionLabel(text: String) = TextView(this).apply {
         this.text = text
         setTextColor(getColor(R.color.mb_muted))
-        textSize = 13f
-        setPadding(dp(4), dp(18), 0, dp(2))
+        textSize = 14f
+        setTypeface(typeface, Typeface.BOLD)
+        setPadding(dp(8), dp(20), 0, dp(8))
     }
 
     private fun note(text: String) = TextView(this).apply {

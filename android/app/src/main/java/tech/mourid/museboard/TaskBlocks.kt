@@ -85,7 +85,8 @@ class TaskBlocks(
         setPadding(dp(18), 0, dp(18), 0)
         layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(52))
             .apply { topMargin = dp(10) }
-        setOnClickListener { openLink(activity, url) }
+        pressable()
+        onTap { openLink(activity, url) }
     }
 
     private fun check(b: JSONObject): View {
@@ -120,11 +121,10 @@ class TaskBlocks(
         paint(b.optBoolean("done"))
         row.addView(box)
         row.addView(label, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.setOnClickListener {
+        row.onTap {
             val done = !b.optBoolean("done")
             b.put("done", done)
             paint(done)
-            if (done) row.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
             onChange(blocks)
         }
         return row
@@ -162,7 +162,7 @@ class TaskBlocks(
             head.announce(expanded, toggle = true)
         }
         paint(index in open, animate = false)
-        head.setOnClickListener {
+        head.onTap {
             val expanded = index !in open
             if (expanded) open.add(index) else open.remove(index)
             paint(expanded, animate = true)

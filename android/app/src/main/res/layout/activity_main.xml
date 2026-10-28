@@ -21,10 +21,13 @@
         android:paddingEnd="16dp"
         android:paddingBottom="120dp">
 
-        <!-- Top bar: brand, then Calendar / History / Theme -->
+        <!-- Header, like One UI's own apps: a big title with its actions on
+             the same row (Calendar, then ⋮ for History, Theme, Refresh…),
+             the date under it. No brand line, no small caps labels. -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -32,10 +35,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:paddingStart="4dp"
-                android:text="@string/app_name"
-                android:textColor="@color/mb_accent"
-                android:textSize="15sp"
+                android:paddingStart="8dp"
+                android:text="@string/heading_today"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="32sp"
                 android:textStyle="bold" />
 
             <ImageView
@@ -45,34 +48,18 @@
                 android:src="@drawable/mb_ic_calendar24" />
 
             <ImageView
-                android:id="@+id/btn_history"
+                android:id="@+id/btn_more"
                 style="@style/MuseBoard.TopIcon"
-                android:contentDescription="@string/history"
-                android:src="@drawable/mb_ic_history24" />
-
-            <!-- Theme (issue #11): Auto → Light → Dark -->
-            <ImageView
-                android:id="@+id/theme_toggle"
-                style="@style/MuseBoard.TopIcon" />
+                android:contentDescription="@string/more_options"
+                android:src="@drawable/mb_ic_more24" />
         </LinearLayout>
-
-        <!-- Big heading (issue #13) -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:paddingStart="4dp"
-            android:text="@string/heading_today"
-            android:textColor="@color/mb_on_surface"
-            android:textSize="34sp"
-            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/date"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:paddingStart="4dp"
+            android:layout_marginBottom="8dp"
+            android:paddingStart="8dp"
             android:textColor="@color/mb_muted"
             android:textSize="15sp" />
 
@@ -134,7 +121,7 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/mb_button_primary"
-                android:stateListAnimator="@null"
+                android:stateListAnimator="@animator/mb_press"
                 android:text="@string/save"
                 android:textAllCaps="false"
                 android:textColor="@color/mb_on_primary"
@@ -176,7 +163,8 @@
                     android:gravity="center_vertical"
                     android:longClickable="true"
                     android:orientation="horizontal"
-                    android:padding="20dp">
+                    android:padding="22dp"
+                    android:stateListAnimator="@animator/mb_press">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -188,18 +176,17 @@
                             android:id="@+id/focus_meta"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:letterSpacing="0.08"
-                            android:textAllCaps="true"
                             android:textColor="@color/mb_muted"
-                            android:textSize="12sp" />
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/focus_step"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
+                            android:lineSpacingExtra="2dp"
                             android:textColor="@color/mb_on_surface"
-                            android:textSize="26sp"
+                            android:textSize="27sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -223,7 +210,8 @@
                             android:text="@string/too_big"
                             android:textColor="@color/mb_on_surface"
                             android:textSize="13sp"
-                            android:visibility="gone" />
+                            android:visibility="gone"
+                            android:stateListAnimator="@animator/mb_press" />
                         <!-- Go-to link (issue #12) -->
                         <TextView
                             android:id="@+id/focus_open"
@@ -237,7 +225,8 @@
                             android:text="@string/open_link"
                             android:textColor="@color/mb_on_surface"
                             android:textSize="13sp"
-                            android:visibility="gone" />
+                            android:visibility="gone"
+                            android:stateListAnimator="@animator/mb_press" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -270,45 +259,11 @@
                             android:paddingEnd="16dp"
                             android:text="@string/later"
                             android:textColor="@color/mb_on_surface"
-                            android:textSize="14sp" />
+                            android:textSize="14sp"
+                            android:stateListAnimator="@animator/mb_press" />
                     </LinearLayout>
                 </LinearLayout>
             </tech.mourid.museboard.SwipeRow>
-
-            <!-- "✓ Done. 2 today. Undo" for a few seconds after an action -->
-            <LinearLayout
-                android:id="@+id/undo_bar"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/mb_button_tonal"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="18dp"
-                android:paddingEnd="6dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/undo_text"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="@color/mb_on_surface"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/undo_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:background="@drawable/mb_ripple_rounded"
-                    android:gravity="center"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:text="@string/undo"
-                    android:textColor="@color/mb_accent"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
 
             <TextView
                 android:id="@+id/gesture_hint"
@@ -388,41 +343,56 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="28dp"
                 android:background="@drawable/mb_button_tonal"
-                android:stateListAnimator="@null"
+                android:stateListAnimator="@animator/mb_press"
                 android:text="@string/add_widget"
                 android:textAllCaps="false"
                 android:textColor="@color/mb_on_surface"
                 android:textSize="15sp" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-
-                <TextView
-                    android:id="@+id/btn_refresh"
-                    style="@style/MuseBoard.FooterLink"
-                    android:text="@string/refresh" />
-
-                <TextView
-                    style="@style/MuseBoard.FooterLink"
-                    android:importantForAccessibility="no"
-                    android:minWidth="0dp"
-                    android:paddingStart="0dp"
-                    android:paddingEnd="0dp"
-                    android:text="·" />
-
-                <TextView
-                    android:id="@+id/btn_change_token"
-                    style="@style/MuseBoard.FooterLink"
-                    android:text="@string/change_token" />
-            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
+
+<!-- "✓ Done. 2 today. Undo": floats above the + for a few seconds after
+     an action, like a native snackbar. -->
+<LinearLayout
+    android:id="@+id/undo_bar"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:layout_gravity="bottom"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="108dp"
+    android:background="@drawable/mb_snackbar_bg"
+    android:elevation="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="20dp"
+    android:paddingEnd="8dp"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/undo_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/mb_on_surface"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/undo_button"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:background="@drawable/mb_ripple_rounded"
+        android:gravity="center"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:stateListAnimator="@animator/mb_press"
+        android:text="@string/undo"
+        android:textColor="@color/mb_accent"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+</LinearLayout>
 
 <!-- Quick-add (issues #6, #13): the big + at the bottom centre -->
 <ImageView
@@ -436,5 +406,6 @@
     android:elevation="6dp"
     android:scaleType="center"
     android:src="@drawable/mb_ic_add_fab"
+    android:stateListAnimator="@animator/mb_press"
     android:visibility="gone" />
 </FrameLayout>

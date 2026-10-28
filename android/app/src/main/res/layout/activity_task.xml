@@ -183,6 +183,29 @@
                     android:contentDescription="@string/detail_clear_when" />
             </LinearLayout>
 
+            <!-- Time estimate: tap for a few common lengths -->
+            <LinearLayout
+                android:id="@+id/task_estimate_row"
+                style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_timer24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_estimate" />
+
+                <TextView
+                    android:id="@+id/task_estimate_value"
+                    style="@style/MuseBoard.PropertyValue" />
+
+                <ImageView
+                    android:id="@+id/task_estimate_clear"
+                    style="@style/MuseBoard.PropertyClear"
+                    android:contentDescription="@string/detail_clear_estimate" />
+            </LinearLayout>
+
             <LinearLayout style="@style/MuseBoard.PropertyRow">
 
                 <ImageView

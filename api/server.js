@@ -28,7 +28,8 @@
  * sooner in the queue), url (go-to link, http/https), group (short
  * label; the app groups its list by it), blocks (what the detail page shows,
  * written by Muse: text, headings, link buttons, checklist items, toggles;
- * see BLOCK_TYPES). Read-only: snooze_count (Laters since first_step
+ * see BLOCK_TYPES), estimate_min (realistic minutes for the whole task,
+ * shown as "~15 min"). Read-only: snooze_count (Laters since first_step
  * last changed; the app offers "Too big?" at 2).
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
@@ -89,6 +90,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snooze_count INT NOT NULL DEFAULT 0;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS url TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_group TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS blocks JSONB;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimate_min INT;
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -128,7 +130,7 @@ const SEED = [
 ];
 
 const TASK_COLUMNS =
-  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url, task_group, blocks";
+  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url, task_group, blocks, estimate_min";
 
 async function initDb() {
   await pool.query(SCHEMA);
@@ -188,6 +190,7 @@ function publicTask(r) {
     url: r.url,
     group: r.task_group,
     blocks: r.blocks || [],
+    estimate_min: r.estimate_min,
   };
 }
 
@@ -233,6 +236,8 @@ const FIELDS = {
   position: { kind: "int" },
   // The detail page's content, an ordered list (see BLOCK_TYPES).
   blocks: { kind: "blocks" },
+  // Realistic time for the whole task, in minutes (shown as "~15 min").
+  estimate_min: { kind: "minutes", max: 1440 },
 };
 
 /** Block types and the text each carries (key -> max length). A button
@@ -297,6 +302,12 @@ function validateTaskFields(body, { creating }) {
       if (!Number.isInteger(value) || value < 0) return `${name} must be a non-negative integer`;
       continue;
     }
+    if (spec.kind === "minutes") {
+      if (value !== null && (!Number.isInteger(value) || value < 1 || value > spec.max)) {
+        return `${name} must be whole minutes from 1 to ${spec.max}, or null`;
+      }
+      continue;
+    }
     if (value === null) {
       if (spec.required) return `${name} is required`;
       continue;
@@ -320,7 +331,7 @@ function validateTaskFields(body, { creating }) {
 
 /** The value stored for a field: trimmed text, empty text as null. */
 function storedValue(name, value) {
-  if (value === null || FIELDS[name].kind === "int") return value;
+  if (value === null || FIELDS[name].kind === "int" || FIELDS[name].kind === "minutes") return value;
   // JSON text for the jsonb column (pg would send a JS array as a Postgres
   // array); an empty list is stored as null.
   if (FIELDS[name].kind === "blocks") {

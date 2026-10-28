@@ -43,6 +43,7 @@ that glance is enough to start.
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
 | `group` | Optional short label, up to 40 characters: "Coursera ML", "Manara", "NutriSynth", "Personal". The app groups its list by it and can filter to one group; the widget ignores it. Set it when the task clearly belongs to a stream of work. |
 | `blocks` | What the task's page shows under the first step: an ordered list of text, headings, buttons, checklist items and toggles (see "Blocks" below). Up to 40. The app's detail page and the web's "More" show them; the widget ignores them. |
+| `estimate_min` | How long the **whole task** realistically takes, in minutes (1 to 1440). Shown as "~15 min" next to the time on the widget, the app and the web. Set it when you can judge it; be honest rather than small, a true "~45 min" is easier to plan for than a hopeful "~10 min". `null` clears it. |
 | `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00
@@ -135,6 +136,7 @@ curl -s -H "$AUTH" -H 'Content-Type: application/json' -X POST $B/api/tasks -d '
   "first_step": "Write 3 questions for Manal",
   "plan_at": "2026-10-29T18:00",
   "plan_where": "desk",
+  "estimate_min": 20,
   "due_at": "2026-10-30T12:00"
 }'
 
@@ -169,7 +171,7 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 | `GET /health` | No auth |
 
 Errors: 400 with `{ error }` for bad input (blank title, too long, bad
-date-time), 401 for a bad token, 404 for an unknown id or wrong state.
+date-time, estimate outside 1 to 1440), 401 for a bad token, 404 for an unknown id or wrong state.
 
 ---
 
@@ -214,6 +216,10 @@ and the rules below.
   every APK the owner will install.
 - **Design** comes from `docs/design-system.md`: colour tokens, sizes,
   copy rules. Web and Android share the same tokens.
+- **Feel native.** Taps go through `View.onTap` (haptic tick) and tappable
+  views get `animator/mb_press` (press-in); lists are cards of rows with
+  hairline dividers (`newListCard` / `addCardRow`); no small caps labels.
+  Plus Jakarta Sans comes from the theme; widget TextViews set it themselves.
 
 ### Run and check
 

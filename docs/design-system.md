@@ -18,7 +18,7 @@ tokens and follows the launcher's light / dark.
 | `page` | App / web background | `#0E0E10` | `#F7F6F2` |
 | `surface` | Cards, widget, sheets | `#1B1B1F` | `#FFFFFF` |
 | `inset` | "Then" box, chips, tonal pills | `#27272D` | `#EFEDE6` |
-| `border` | 1px card / widget outline | `#2E2E35` | `#E4E2DA` |
+| `border` | List dividers, the widget outline | `#2E2E35` | `#E4E2DA` |
 | `on-surface` | Main text, the step | `#F4F4F5` | `#18181B` |
 | `muted` | Meta line, task title, times | `#A1A1AA` | `#57534E` |
 | `primary` | The yellow as a **fill**: Done, +, selected day, primary buttons | `#F5C542` | `#F5C542` |
@@ -33,23 +33,34 @@ light, at 4.68:1. Check any new pair before using it.
 
 ## Type
 
-System font (Roboto / One UI Sans on phones). Five sizes only:
+**Plus Jakarta Sans** (SIL OFL 1.1), bundled in the app and widget
+(`res/font/jakarta*.ttf`, 400 to 800) and self-hosted on the web
+(`web/fonts/`, variable). Set once in the app theme (`android:fontFamily`)
+and on each widget TextView.
 
 | Role | Size | Weight |
 |---|---|---|
-| The step (focus) | 21sp widget, 26px web | Bold |
-| List rows | 14sp | Regular |
-| Task title under the step | 13sp | Regular |
-| "Then:" / feedback line | 12sp | Regular |
-| Meta line ("NOW · 21:00 · DESK"), count | 11sp, caps, 0.08em tracking | Regular |
+| Screen title ("Today") | 32sp / 32px | Bold |
+| The step (focus) | 27sp app / 27px web, 21sp widget | Bold |
+| Section title ("Then", "Notes") | 18sp | Bold |
+| Row title | 16sp | Bold |
+| Body, row detail, meta line ("Now · 21:00 · desk · ~15 min") | 14 to 15sp, 13sp on the widget | Regular, `muted` for meta |
+
+**No eyebrows**: no small uppercase labels with letter spacing anywhere
+(app, widget, web). Sections get sentence-case bold titles; a group or day
+name above its card is 14sp bold `muted`.
 
 ## Shape and space
 
 - Corner radius: the launcher's own for the widget on Android 12+
   (`system_app_widget_background_radius`, inner list uses
   `system_app_widget_inner_radius`), 24dp / 16dp before that. App cards
-  28dp, rows 20dp; web 28px / 20px. Cards and the widget carry a 1px
-  `border`.
+  28dp; web 28px. App and web cards have **no border** (like Samsung's
+  Clock app): the surface colour does the work. Only the widget keeps a
+  1px `border`, against the wallpaper.
+- Lists are **cards of rows**: one rounded card per section (or per group /
+  day), rows 64dp+ inside it, separated by a hairline `border` divider
+  inset 20dp. Never a stack of separate little boxes.
 - Padding 16dp inside the widget. Gaps: 4dp under the step, 8dp before the
   Then line, 12 to 14dp between blocks.
 - No borders, dividers, bullets or section labels in the widget. Space and
@@ -57,7 +68,7 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 
 ## Components
 
-- **Focus block**: meta line (`Now · <plan time or "by" deadline> · <where>`)
+- **Focus block**: meta line (`Now · <plan time or "by" deadline> · <where> · ~<estimate>`)
   + done count on the right, the step (max 2 lines, so a 4×2 never clips), the task title (1
   line), the Then line (1 line).
 - **Done**: 60dp circle (64px web), `primary`. On Android 12+ (widget) and
@@ -75,9 +86,15 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   corners, a drag handle, the step as title and the task under it, 56dp
   rows with a 24dp line icon and the time on the right ("20:00"). Slides up
   from the bottom.
-- **Press feedback**: every tappable thing gets a contained ripple
-  (`on-surface` at 12%) clipped to its own shape. Never the borderless
-  ripple: it spills past small targets as a loose circle.
+- **Press feedback**: every tappable thing answers at once, three ways:
+  a contained ripple (`on-surface` at 12%) clipped to its own shape (never
+  the borderless one), a press-in to 96% that springs back on release
+  (`animator/mb_press`; web: `:active` scale), and a light haptic tick
+  (`View.onTap` in `Feedback.kt`, which follows the phone's touch-feedback
+  setting; web: `navigator.vibrate`). Done adds a confirm haptic.
+- **Snackbar**: "Done. 2 today. Undo", "Moved. Reminder at 21:00." floats
+  at the bottom (above the +), `inset` fill, 20dp radius, slides up, gone
+  after 6 s.
 - **Then list** (widget at about 260dp tall and up, usually 4 rows, and on the web): up to 3
   rows, title left, short time right, on `inset`.
 - **Feedback line**: replaces the Then line for 60 s after an action: "✓
@@ -89,8 +106,10 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 
 ## App screens
 
-- **Top bar**: "Muse Board" in `accent`, then Calendar, History and Theme
-  icons (48dp). Under it a big bold **Today** (34sp) and the date.
+- **Header** (like One UI's own apps): a big bold **Today** with its
+  actions on the same row, Calendar and ⋮ (48dp, `on-surface`), the date
+  under it in `muted`. No brand line. ⋮ opens the bottom sheet with
+  History, Theme, Add widget (when there is none), Refresh, Change token.
 - **+ button**: a 64dp yellow circle, bottom centre, opens quick-add.
 - **Calendar** (top bar): month grid with a dot on days that have tasks
   (plan date, due date as fallback), the selected day in a yellow circle,
@@ -105,6 +124,10 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   title, first step (both required, the 2-minute rule written under the
   field), When (the phone's own date and time pickers) and Where. Adds to
   the end of the queue.
+- **Estimate** (`estimate_min`): "~15 min" after the time on the focus line
+  (widget, app, web) and under the time on rows. Set from the detail page's
+  "Takes" row (5 min to 2 h in the bottom sheet) or quick-add's chips
+  (5 / 15 / 30 min / 1 h).
 - **Task detail page** (tap any task card): big editable title, first
   step, Muse's blocks (below), notes (long ones folded to 4 lines with "See more"), then When /
   Where / Link / Group / Due rows (tap to pick, × to clear), a Links section

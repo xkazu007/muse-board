@@ -53,6 +53,8 @@ class TaskActivity : Activity() {
     private lateinit var whenClear: ImageView
     private lateinit var dueValue: TextView
     private lateinit var dueClear: ImageView
+    private lateinit var estimateValue: TextView
+    private lateinit var estimateClear: ImageView
     private lateinit var links: LinearLayout
     private lateinit var blocks: TaskBlocks
 
@@ -94,11 +96,13 @@ class TaskActivity : Activity() {
         whenClear = findViewById(R.id.task_when_clear)
         dueValue = findViewById(R.id.task_due_value)
         dueClear = findViewById(R.id.task_due_clear)
+        estimateValue = findViewById(R.id.task_estimate_value)
+        estimateClear = findViewById(R.id.task_estimate_clear)
         links = findViewById(R.id.task_links)
         blocks = TaskBlocks(this, findViewById(R.id.task_blocks)) { list -> queue("blocks", list) }
 
-        findViewById<View>(R.id.task_back).setOnClickListener { finish() }
-        findViewById<View>(R.id.task_notes_more).setOnClickListener { expandNotes() }
+        findViewById<View>(R.id.task_back).onTap { finish() }
+        findViewById<View>(R.id.task_notes_more).onTap { expandNotes() }
         notesEdit.setOnFocusChangeListener { _, focused -> if (focused) expandNotes() }
         titleEdit.onEdit { text ->
             if (text.isBlank()) {
@@ -116,37 +120,39 @@ class TaskActivity : Activity() {
             linkOpen.visibility = if (link.url != null) View.VISIBLE else View.GONE
             if (link.ok) queue("url", link.url ?: JSONObject.NULL) else status.setText(R.string.link_invalid)
         }
-        linkOpen.setOnClickListener { normalizeLink(linkEdit.text.toString()).url?.let { openLink(this, it) } }
+        linkOpen.onTap { normalizeLink(linkEdit.text.toString()).url?.let { openLink(this, it) } }
         notesEdit.onEdit {
             queue("detail", it)
             showLinks(it)
         }
-        findViewById<View>(R.id.task_when_row).setOnClickListener {
+        findViewById<View>(R.id.task_when_row).onTap {
             pickDateTime(this, parseIso(task?.planAt)) { picked ->
                 showTime(whenValue, whenClear, toIso(picked.millis))
                 queue("plan_at", picked.local)
                 saveNow()
             }
         }
-        whenClear.setOnClickListener {
+        whenClear.onTap {
             showTime(whenValue, whenClear, null)
             queue("plan_at", JSONObject.NULL)
             saveNow()
         }
-        findViewById<View>(R.id.task_due_row).setOnClickListener {
+        findViewById<View>(R.id.task_due_row).onTap {
             pickDateTime(this, parseIso(task?.dueAt)) { picked ->
                 showTime(dueValue, dueClear, toIso(picked.millis))
                 queue("due_at", picked.local)
                 saveNow()
             }
         }
-        dueClear.setOnClickListener {
+        dueClear.onTap {
             showTime(dueValue, dueClear, null)
             queue("due_at", JSONObject.NULL)
             saveNow()
         }
-        findViewById<View>(R.id.task_done).setOnClickListener { onDoneOrUndo() }
-        findViewById<View>(R.id.task_later).setOnClickListener { onLater() }
+        findViewById<View>(R.id.task_estimate_row).onTap { pickEstimate() }
+        estimateClear.onTap { setEstimate(null) }
+        findViewById<View>(R.id.task_done).onTap { onDoneOrUndo() }
+        findViewById<View>(R.id.task_later).onTap { onLater() }
 
         // Open instantly with the task the list already had, then refresh.
         intent.getStringExtra(EXTRA_TASK_JSON)?.let { json ->
@@ -207,6 +213,7 @@ class TaskActivity : Activity() {
         filling = false
         showTime(whenValue, whenClear, t.planAt)
         showTime(dueValue, dueClear, t.dueAt)
+        showEstimate(t.estimateMin)
         showLinks(t.detail.orEmpty())
         blocks.show(t.blocks)
         foldNotes()
@@ -228,6 +235,27 @@ class TaskActivity : Activity() {
         value.text = if (text.isEmpty()) getString(R.string.detail_none) else text
         value.alpha = if (text.isEmpty()) 0.6f else 1f
         clear.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun showEstimate(min: Int?) {
+        estimateValue.text = min?.let { formatMinutes(it) } ?: getString(R.string.detail_none)
+        estimateValue.alpha = if (min == null) 0.6f else 1f
+        estimateClear.visibility = if (min == null) View.GONE else View.VISIBLE
+    }
+
+    /** A few common lengths in the bottom sheet; saved at once. */
+    private fun pickEstimate() {
+        val sheet = ActionSheet(this, getString(R.string.estimate_title), task?.title)
+        for (min in ESTIMATES) {
+            sheet.add(R.drawable.mb_ic_timer24, formatMinutes(min)) { setEstimate(min) }
+        }
+        sheet.show()
+    }
+
+    private fun setEstimate(min: Int?) {
+        showEstimate(min)
+        queue("estimate_min", min ?: JSONObject.NULL)
+        saveNow()
     }
 
     /** Long notes start folded to [NOTES_FOLDED_LINES] lines with "See more"
@@ -264,7 +292,7 @@ class TaskActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(getColor(R.color.mb_accent))
             }
-            row.setOnClickListener { openLink(this, url) }
+            row.onTap { openLink(this, url) }
             links.addView(row)
         }
     }
@@ -366,6 +394,7 @@ class TaskActivity : Activity() {
         const val EXTRA_TASK_JSON = "task_json"
         private const val SAVE_DELAY_MS = 700L
         private const val NOTES_FOLDED_LINES = 4
+        private val ESTIMATES = listOf(5, 10, 15, 25, 45, 60, 90, 120)
 
         /** Opens [task]; the page shows it at once and refreshes behind. */
         fun intent(context: Context, task: BoardTask, shrink: Boolean = false): Intent =

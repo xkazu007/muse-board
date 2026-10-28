@@ -6,6 +6,7 @@
     <style name="Theme.MuseBoard" parent="android:Theme.DeviceDefault.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:fontFamily">@font/jakarta</item>
         <item name="android:windowBackground">@color/mb_page</item>
         <item name="android:statusBarColor">@color/mb_page</item>
         <item name="android:navigationBarColor">@color/mb_page</item>

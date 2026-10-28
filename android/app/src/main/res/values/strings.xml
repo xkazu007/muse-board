@@ -108,6 +108,12 @@
     <string name="detail_link_hint">Paste a link</string>
     <string name="add_hint_link">Link (optional)</string>
     <string name="history">History</string>
+    <string name="more_options">More options</string>
+    <string name="detail_estimate">Takes</string>
+    <string name="detail_clear_estimate">Clear time estimate</string>
+    <string name="estimate_title">How long will it take?</string>
+    <string name="estimate_clear">No estimate</string>
+    <string name="add_estimate">Time</string>
     <string name="calendar">Calendar</string>
     <string name="see_more">See more</string>
     <string name="detail_group">Group</string>
@@ -137,7 +143,7 @@
     <string name="widget_pin_unsupported">Your launcher doesn\'t support adding widgets from the app. Long-press the home screen → Widgets → Muse Board instead.</string>
 
     <!-- Sample content for the widget picker preview (widget_preview.xml) -->
-    <string name="preview_meta">Now · 21:00 · desk</string>
+    <string name="preview_meta">Now · 21:00 · desk · ~15 min</string>
     <string name="preview_count">1 done</string>
     <string name="preview_step">Open Coursera and press play</string>
     <string name="preview_task">Watch the 7-min ML video</string>

@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- "THEN", "LATER", "DONE TODAY" above the app's lists. -->
+    <!-- Section title ("Then", "Later", "Done today", "Notes"): sentence
+         case and bold, like One UI's own section titles. No small caps
+         labels ("eyebrows") anywhere. -->
     <style name="MuseBoard.SectionLabel" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">24dp</item>
-        <item name="android:paddingStart">4dp</item>
-        <item name="android:letterSpacing">0.08</item>
-        <item name="android:textAllCaps">true</item>
-        <item name="android:textColor">@color/mb_muted</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:layout_marginTop">28dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:textColor">@color/mb_on_surface</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
         <item name="android:visibility">gone</item>
     </style>
 
@@ -31,6 +33,8 @@
         <item name="android:layout_height">48dp</item>
         <item name="android:background">@drawable/mb_ripple_rounded</item>
         <item name="android:scaleType">center</item>
+        <item name="android:stateListAnimator">@animator/mb_press</item>
+        <item name="android:tint">@color/mb_on_surface</item>
     </style>
 
     <!-- Month / Week switch in the calendar's top bar. -->

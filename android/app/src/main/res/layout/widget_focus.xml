@@ -37,18 +37,18 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_meta"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    android:letterSpacing="0.08"
                     android:maxLines="1"
-                    android:textAllCaps="true"
                     android:textColor="@color/mb_muted"
-                    android:textSize="11sp" />
+                    android:textSize="13sp" />
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -59,6 +59,7 @@
             </LinearLayout>
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_step"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -71,6 +72,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_task"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -93,6 +95,7 @@
                 android:visibility="gone">
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_then"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -104,6 +107,7 @@
 
                 <!-- Go-to link of the focus task (issue #12) -->
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_open"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
@@ -117,6 +121,7 @@
                     android:visibility="gone" />
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_undo"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
@@ -149,6 +154,7 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_btn_later"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
@@ -176,6 +182,7 @@
         android:visibility="gone">
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_1"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -188,6 +195,7 @@
             android:visibility="gone" />
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_2"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -201,6 +209,7 @@
             android:visibility="gone" />
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_3"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -238,6 +247,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_1_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -248,6 +258,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_1_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -266,6 +277,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_2_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -276,6 +288,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_2_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -294,6 +307,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_3_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -304,6 +318,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_3_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
