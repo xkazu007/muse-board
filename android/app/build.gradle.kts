@@ -11,8 +11,9 @@ android {
         applicationId = "tech.mourid.museboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        // Set in gradle.properties (shared with build-manual.sh).
+        versionCode = (project.property("museboard.versionCode") as String).toInt()
+        versionName = project.property("museboard.versionName") as String
     }
 
     signingConfigs {

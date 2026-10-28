@@ -98,11 +98,32 @@ $("token-save").addEventListener("click", () => {
   loadBoard();
 });
 
+/** "Marked done. Undo" — the status line's undo link reopens the task. */
+function showUndo(taskId) {
+  const status = $("status");
+  status.textContent = "Marked done. ";
+  const undo = document.createElement("button");
+  undo.className = "link";
+  undo.textContent = "Undo";
+  undo.addEventListener("click", async () => {
+    try {
+      await api("/api/tasks/" + taskId + "/reopen", "POST");
+      status.textContent = "";
+      loadBoard();
+    } catch (e) {
+      status.textContent = "Couldn't undo it. Try again.";
+    }
+  });
+  status.appendChild(undo);
+}
+
 $("btn-done").addEventListener("click", async () => {
   if (!focusId) return;
+  const doneId = focusId;
   try {
-    await api("/api/tasks/" + focusId + "/complete", "POST");
-    loadBoard();
+    await api("/api/tasks/" + doneId + "/complete", "POST");
+    await loadBoard();
+    showUndo(doneId);
   } catch (e) {
     $("status").textContent = "Couldn't mark it done. Try again.";
   }

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Initial layout: only the header and "Loading your board…" show until
+     the first refresh. Everything the code toggles starts hidden, so the
+     buttons never appear without their click handlers. The widget picker
+     uses widget_preview.xml instead. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -36,6 +40,7 @@
         android:layout_marginTop="10dp"
         android:ellipsize="end"
         android:maxLines="2"
+        android:text="@string/widget_loading"
         android:textColor="@color/text"
         android:textSize="18sp"
         android:textStyle="bold" />
@@ -67,6 +72,7 @@
 
         <Button
             android:id="@+id/widget_btn_done"
+            android:visibility="gone"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
@@ -79,6 +85,7 @@
 
         <Button
             android:id="@+id/widget_btn_snooze"
+            android:visibility="gone"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="10dp"
@@ -89,20 +96,26 @@
             android:textSize="15sp" />
     </LinearLayout>
 
-    <View
+    <!-- Divider. Must be a RemoteViews-supported class: a plain <View>
+         makes the whole widget fail to inflate ("Couldn't add widget"). -->
+    <FrameLayout
+        android:id="@+id/widget_up_next_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="12dp"
         android:layout_marginBottom="10dp"
-        android:background="@color/border" />
+        android:background="@color/border"
+        android:visibility="gone" />
 
     <TextView
+        android:id="@+id/widget_up_next_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/up_next"
         android:textColor="@color/muted"
         android:textSize="11sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_upcoming_1"
@@ -110,7 +123,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:textColor="@color/text"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_upcoming_2"
@@ -118,7 +132,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:textColor="@color/text"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_upcoming_3"
@@ -126,7 +141,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:textColor="@color/text"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_done_count"

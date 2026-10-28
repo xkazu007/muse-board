@@ -26,6 +26,12 @@ BT="$ANDROID_HOME/build-tools/34.0.0"
 PLATFORM="$ANDROID_HOME/platforms/android-34/android.jar"
 LIBS_DIR="${MUSEBOARD_LIBS:-$HOME/.muse-board-libs}"
 
+# App version: read from gradle.properties, the same source Gradle uses.
+prop() { sed -n "s/^$1=//p" "$APP_DIR/gradle.properties"; }
+VERSION_CODE="$(prop museboard.versionCode)"
+VERSION_NAME="$(prop museboard.versionName)"
+[ -n "$VERSION_CODE" ] && [ -n "$VERSION_NAME" ] || { echo "museboard.version* missing from gradle.properties" >&2; exit 1; }
+
 KOTLIN_VERSION=2.0.21
 COROUTINES_VERSION=1.8.1
 MAVEN=https://repo.maven.apache.org/maven2
@@ -79,6 +85,24 @@ CP="$PLATFORM:$STDLIB:$COROUTINES_CORE:$COROUTINES_ANDROID:$ANNOTATIONS"
 rm -rf "$BUILD"
 mkdir -p "$BUILD/compiled" "$BUILD/gen" "$BUILD/classes" "$BUILD/dex"
 
+# --- 0. Widget layouts: RemoteViews-supported classes only -----------------
+# Anything else (a plain <View>, <Space>, androidx.*) builds fine but makes
+# the widget fail on the phone with "Couldn't add widget".
+python3 - "$SRC"/res/layout/widget_*.xml <<'PY'
+import sys, xml.etree.ElementTree as ET
+ok = {"LinearLayout", "FrameLayout", "RelativeLayout", "GridLayout", "TextView",
+      "Button", "ImageView", "ImageButton", "ProgressBar", "Chronometer",
+      "AnalogClock", "TextClock", "ViewFlipper", "ListView", "GridView",
+      "StackView", "AdapterViewFlipper", "ViewStub", "include", "merge"}
+failed = False
+for path in sys.argv[1:]:
+    bad = sorted({el.tag for el in ET.parse(path).iter()} - ok)
+    if bad:
+        print(f"{path}: not allowed in a widget layout: {', '.join(bad)}", file=sys.stderr)
+        failed = True
+sys.exit(1 if failed else 0)
+PY
+
 # --- 1. Compile resources --------------------------------------------------
 echo "== aapt2 compile =="
 "$BT/aapt2" compile --dir "$SRC/res" -o "$BUILD/compiled.zip"
@@ -89,7 +113,7 @@ echo "== aapt2 link =="
     -I "$PLATFORM" \
     --java "$BUILD/gen" \
     --min-sdk-version 26 --target-sdk-version 34 \
-    --version-code 2 --version-name 1.1 \
+    --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
     "$BUILD/compiled.zip"
 
 # --- 2. Compile Kotlin (+ generated R.java) --------------------------------

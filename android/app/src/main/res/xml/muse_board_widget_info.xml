@@ -10,7 +10,7 @@
     android:maxResizeHeight="420dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_muse_board"
-    android:previewLayout="@layout/widget_muse_board"
+    android:previewLayout="@layout/widget_preview"
     android:description="@string/widget_desc"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

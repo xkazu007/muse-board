@@ -54,13 +54,18 @@ class MainActivity : Activity() {
         taskList = findViewById(R.id.task_list)
 
         findViewById<Button>(R.id.token_save).setOnClickListener { saveToken() }
-        findViewById<Button>(R.id.btn_done).setOnClickListener { onFocusDone() }
-        findViewById<Button>(R.id.btn_snooze).setOnClickListener { onFocusSnooze() }
+        findViewById<Button>(R.id.btn_done).setOnClickListener {
+            focusId?.let { runTaskAction(it, ApiClient::completeTask) }
+        }
+        findViewById<Button>(R.id.btn_snooze).setOnClickListener {
+            focusId?.let { runTaskAction(it, ApiClient::snoozeTask) }
+        }
         findViewById<Button>(R.id.btn_refresh).setOnClickListener { loadBoard() }
         findViewById<Button>(R.id.btn_change_token).setOnClickListener {
             TokenStore.clear(this)
             token = null
             showTokenBox()
+            WidgetUpdater.requestRefresh(this)
         }
         findViewById<Button>(R.id.btn_add_widget).setOnClickListener { requestPinWidget() }
 
@@ -78,19 +83,18 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    /** Pin the widget from inside the app. This is the reliable path on
-     *  One UI: the picker drag fails with "Couldn't add widget" when the
-     *  app has never been opened (stopped state), and pinning from here
-     *  runs after the app is open, so that state is already cleared. */
+    /** Pin the widget from inside the app. requestPinAppWidget only opens
+     *  the launcher's confirmation dialog; the widget is placed once the
+     *  user taps Add there. */
     private fun requestPinWidget() {
         val manager = getSystemService(AppWidgetManager::class.java)
         val provider = ComponentName(this, MuseBoardWidget::class.java)
         if (manager.isRequestPinAppWidgetSupported) {
-            manager.requestPinAppWidget(provider, null, null)
+            val shown = manager.requestPinAppWidget(provider, null, null)
             Toast.makeText(
                 this,
-                getString(R.string.widget_pin_ok),
-                Toast.LENGTH_SHORT,
+                getString(if (shown) R.string.widget_pin_ok else R.string.widget_pin_failed),
+                if (shown) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
             ).show()
         } else {
             Toast.makeText(
@@ -126,15 +130,26 @@ class MainActivity : Activity() {
         WidgetUpdater.requestRefresh(this)
     }
 
+    /** The saved token was refused by the API: forget it and ask again. */
+    private fun onTokenRejected() {
+        TokenStore.clear(this)
+        token = null
+        tokenError.text = getString(R.string.token_invalid)
+        tokenError.visibility = View.VISIBLE
+        showTokenBox()
+        WidgetUpdater.requestRefresh(this)
+    }
+
     private fun loadBoard() {
         val t = token ?: return
         scope.launch {
-            val board = withContext(Dispatchers.IO) {
-                try {
-                    ApiClient.getBoard(t)
-                } catch (_: Exception) {
-                    null
-                }
+            val board = try {
+                withContext(Dispatchers.IO) { ApiClient.getBoard(t) }
+            } catch (_: UnauthorizedException) {
+                onTokenRejected()
+                return@launch
+            } catch (_: Exception) {
+                null
             }
             if (board == null) {
                 Toast.makeText(
@@ -167,12 +182,13 @@ class MainActivity : Activity() {
     private fun loadTasks() {
         val t = token ?: return
         scope.launch {
-            val tasks = withContext(Dispatchers.IO) {
-                try {
-                    ApiClient.getTasks(t)
-                } catch (_: Exception) {
-                    null
-                }
+            val tasks = try {
+                withContext(Dispatchers.IO) { ApiClient.getTasks(t) }
+            } catch (_: UnauthorizedException) {
+                onTokenRejected()
+                return@launch
+            } catch (_: Exception) {
+                null
             }
             if (tasks != null) populateTasks(tasks)
         }
@@ -189,50 +205,30 @@ class MainActivity : Activity() {
                 .filter { it.isNotEmpty() }
                 .joinToString(" · ")
             view.findViewById<TextView>(R.id.task_detail).text = detail
-            val doneButton = view.findViewById<Button>(R.id.task_done)
+            val actionButton = view.findViewById<Button>(R.id.task_done)
             if (task.status == "done") {
-                doneButton.visibility = View.GONE
+                // Done tasks keep an Undo, so a stray tap is recoverable.
                 view.findViewById<TextView>(R.id.task_title).alpha = 0.5f
+                actionButton.text = getString(R.string.undo)
+                actionButton.setBackgroundResource(R.drawable.btn_ghost)
+                actionButton.setOnClickListener { runTaskAction(task.id, ApiClient::reopenTask) }
             } else {
-                doneButton.visibility = View.VISIBLE
-                doneButton.setOnClickListener { onTaskDone(task) }
+                actionButton.setOnClickListener { runTaskAction(task.id, ApiClient::completeTask) }
             }
             taskList.addView(view)
         }
     }
 
-    private fun onFocusDone() {
-        val id = focusId ?: return
+    /** Done / Not now / Undo: call the API, then reload the app and widget. */
+    private fun runTaskAction(id: Int, call: (String, Int) -> Boolean) {
         val t = token ?: return
         scope.launch {
-            val ok = withContext(Dispatchers.IO) { ApiClient.completeTask(t, id) }
-            if (ok) {
-                loadBoard()
-                WidgetUpdater.requestRefresh(this@MainActivity)
-            } else {
-                Toast.makeText(this@MainActivity, getString(R.string.action_failed), Toast.LENGTH_SHORT).show()
+            val ok = try {
+                withContext(Dispatchers.IO) { call(t, id) }
+            } catch (_: UnauthorizedException) {
+                onTokenRejected()
+                return@launch
             }
-        }
-    }
-
-    private fun onFocusSnooze() {
-        val id = focusId ?: return
-        val t = token ?: return
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) { ApiClient.snoozeTask(t, id) }
-            if (ok) {
-                loadBoard()
-                WidgetUpdater.requestRefresh(this@MainActivity)
-            } else {
-                Toast.makeText(this@MainActivity, getString(R.string.action_failed), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun onTaskDone(task: BoardTask) {
-        val t = token ?: return
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) { ApiClient.completeTask(t, task.id) }
             if (ok) {
                 loadBoard()
                 WidgetUpdater.requestRefresh(this@MainActivity)

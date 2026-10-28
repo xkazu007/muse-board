@@ -1,1 +1,15 @@
-{"background_color":"#121212","display":"standalone","name":"Muse Board","short_name":"Muse Board","start_url":"/","theme_color":"#121212"}
+{
+  "name": "Muse Board",
+  "short_name": "Muse Board",
+  "description": "The one thing to do now, what's next, and today's progress.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

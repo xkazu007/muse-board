@@ -1,0 +1,10 @@
+# Build output
+android/app/build/
+android/build/
+android/.gradle/
+android/*.apk
+android/*.apk.idsig
+android/local.properties
+
+# Dependencies
+api/node_modules/

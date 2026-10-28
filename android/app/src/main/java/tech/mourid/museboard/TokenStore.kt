@@ -18,9 +18,6 @@ object TokenStore {
     private const val PREFS = "muse_board"
     private const val KEY_TOKEN = "board_token"
 
-    /** Always false in v1 — the token is stored in plain SharedPreferences. */
-    fun isEncrypted(@Suppress("UNUSED_PARAMETER") context: Context): Boolean = false
-
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

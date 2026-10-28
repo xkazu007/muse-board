@@ -24,9 +24,14 @@ data class BoardResponse(
 
 private val CASABLANCA: TimeZone = TimeZone.getTimeZone("Africa/Casablanca")
 
+/** The string at [key], or null when it is missing, JSON null or empty.
+ *  (optString alone turns JSON null into the text "null".) */
+private fun JSONObject.stringOrNull(key: String): String? =
+    if (isNull(key)) null else optString(key).takeIf { it.isNotEmpty() }
+
 fun parseTask(obj: JSONObject): BoardTask {
-    val detail = obj.optString("detail").takeIf { it.isNotEmpty() }
-    val dueAt = obj.optString("due_at").takeIf { it.isNotEmpty() }
+    val detail = obj.stringOrNull("detail")
+    val dueAt = obj.stringOrNull("due_at")
     return BoardTask(
         id = obj.getInt("id"),
         title = obj.getString("title"),

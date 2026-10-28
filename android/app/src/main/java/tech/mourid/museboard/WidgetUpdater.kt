@@ -32,6 +32,25 @@ object WidgetUpdater {
     private const val ALARM_REQUEST_CODE = 1001
     private const val REFRESH_REQUEST_CODE = 1002
 
+    private val UPCOMING_SLOTS = intArrayOf(
+        R.id.widget_upcoming_1,
+        R.id.widget_upcoming_2,
+        R.id.widget_upcoming_3,
+    )
+    private val TEXT_VIEWS = intArrayOf(
+        R.id.widget_date,
+        R.id.widget_focus_title,
+        R.id.widget_focus_detail,
+        R.id.widget_done_count,
+    )
+    private val HIDEABLE_VIEWS = intArrayOf(
+        R.id.widget_waiting,
+        R.id.widget_btn_done,
+        R.id.widget_btn_snooze,
+        R.id.widget_up_next_divider,
+        R.id.widget_up_next_label,
+    ) + UPCOMING_SLOTS
+
     /** Fetch the board now, in the background. */
     fun requestRefresh(context: Context) {
         val intent = Intent(context, WidgetRefreshReceiver::class.java)
@@ -68,32 +87,52 @@ object WidgetUpdater {
         push(context, buildViews(context, board))
     }
 
+    /** First paint of a newly placed widget, until the first refresh lands.
+     *  Tapping retries, so a lost refresh never leaves it stuck. */
+    fun showLoading(context: Context, appWidgetIds: IntArray) {
+        val views = statusViews(
+            context,
+            context.getString(R.string.widget_loading),
+            context.getString(R.string.widget_tap_refresh),
+            refreshPendingIntent(context),
+        )
+        AppWidgetManager.getInstance(context).updateAppWidget(appWidgetIds, views)
+    }
+
     fun updateAllNoToken(context: Context) {
-        val views = RemoteViews(context.packageName, R.layout.widget_muse_board)
-        views.setTextViewText(R.id.widget_date, "")
-        views.setTextViewText(R.id.widget_focus_title, "Open Muse Board to sign in")
-        views.setTextViewText(R.id.widget_focus_detail, "Paste your board token once in the app.")
-        views.setViewVisibility(R.id.widget_btn_done, View.GONE)
-        views.setViewVisibility(R.id.widget_btn_snooze, View.GONE)
-        views.setViewVisibility(R.id.widget_waiting, View.GONE)
-        views.setViewVisibility(R.id.widget_upcoming_1, View.GONE)
-        views.setViewVisibility(R.id.widget_upcoming_2, View.GONE)
-        views.setViewVisibility(R.id.widget_upcoming_3, View.GONE)
-        views.setTextViewText(R.id.widget_done_count, "")
-        views.setOnClickPendingIntent(R.id.widget_root, openAppPendingIntent(context))
-        push(context, views)
+        push(
+            context,
+            statusViews(
+                context,
+                "Open Muse Board to sign in",
+                "Paste your board token once in the app.",
+                openAppPendingIntent(context),
+            ),
+        )
+    }
+
+    fun updateAllTokenRejected(context: Context) {
+        push(
+            context,
+            statusViews(
+                context,
+                "Board token rejected",
+                "Open Muse Board and paste your token again.",
+                openAppPendingIntent(context),
+            ),
+        )
     }
 
     fun updateAllError(context: Context) {
-        val views = RemoteViews(context.packageName, R.layout.widget_muse_board)
-        views.setTextViewText(R.id.widget_focus_title, "Couldn't reach the board")
-        views.setTextViewText(R.id.widget_focus_detail, "Tap to retry.")
-        views.setViewVisibility(R.id.widget_btn_done, View.GONE)
-        views.setViewVisibility(R.id.widget_btn_snooze, View.GONE)
-        views.setViewVisibility(R.id.widget_waiting, View.GONE)
-        views.setTextViewText(R.id.widget_done_count, "")
-        views.setOnClickPendingIntent(R.id.widget_root, refreshPendingIntent(context))
-        push(context, views)
+        push(
+            context,
+            statusViews(
+                context,
+                "Couldn't reach the board",
+                "Tap to retry.",
+                refreshPendingIntent(context),
+            ),
+        )
     }
 
     private fun push(context: Context, views: RemoteViews) {
@@ -102,8 +141,34 @@ object WidgetUpdater {
         manager.updateAppWidget(component, views)
     }
 
-    private fun buildViews(context: Context, board: BoardResponse): RemoteViews {
+    /**
+     * Every dynamic view reset to empty / hidden. The launcher applies an
+     * update on top of the views already on screen (it does not re-inflate
+     * the layout), so each state must start from here and set everything.
+     */
+    private fun baseViews(context: Context): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_muse_board)
+        for (id in TEXT_VIEWS) views.setTextViewText(id, "")
+        for (id in HIDEABLE_VIEWS) views.setViewVisibility(id, View.GONE)
+        return views
+    }
+
+    /** A message-only state: title, one detail line, tap action. */
+    private fun statusViews(
+        context: Context,
+        title: String,
+        detail: String,
+        onClick: PendingIntent,
+    ): RemoteViews {
+        val views = baseViews(context)
+        views.setTextViewText(R.id.widget_focus_title, title)
+        views.setTextViewText(R.id.widget_focus_detail, detail)
+        views.setOnClickPendingIntent(R.id.widget_root, onClick)
+        return views
+    }
+
+    private fun buildViews(context: Context, board: BoardResponse): RemoteViews {
+        val views = baseViews(context)
         views.setTextViewText(R.id.widget_date, board.date)
         views.setOnClickPendingIntent(R.id.widget_root, refreshPendingIntent(context))
 
@@ -124,36 +189,23 @@ object WidgetUpdater {
                 R.id.widget_btn_snooze,
                 actionPendingIntent(context, ACTION_SNOOZE, focus.id),
             )
-            val waiting = isAfterEightPm()
-            views.setViewVisibility(
-                R.id.widget_waiting,
-                if (waiting) View.VISIBLE else View.GONE,
-            )
+            if (isAfterEightPm()) views.setViewVisibility(R.id.widget_waiting, View.VISIBLE)
         } else {
-            views.setTextViewText(R.id.widget_focus_title, "All clear — nothing left today.")
-            views.setTextViewText(R.id.widget_focus_detail, "")
-            views.setViewVisibility(R.id.widget_btn_done, View.GONE)
-            views.setViewVisibility(R.id.widget_btn_snooze, View.GONE)
-            views.setViewVisibility(R.id.widget_waiting, View.GONE)
+            views.setTextViewText(R.id.widget_focus_title, context.getString(R.string.all_clear))
         }
 
-        val slots = listOf(
-            R.id.widget_upcoming_1,
-            R.id.widget_upcoming_2,
-            R.id.widget_upcoming_3,
-        )
-        for (i in slots.indices) {
-            if (i < board.upcoming.size) {
-                val t = board.upcoming[i]
-                val due = formatDue(t.dueAt)
-                views.setTextViewText(
-                    slots[i],
-                    "• " + t.title + if (due.isNotEmpty()) " — $due" else "",
-                )
-                views.setViewVisibility(slots[i], View.VISIBLE)
-            } else {
-                views.setViewVisibility(slots[i], View.GONE)
-            }
+        val upcoming = board.upcoming.take(UPCOMING_SLOTS.size)
+        if (upcoming.isNotEmpty()) {
+            views.setViewVisibility(R.id.widget_up_next_divider, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_up_next_label, View.VISIBLE)
+        }
+        upcoming.forEachIndexed { i, t ->
+            val due = formatDue(t.dueAt)
+            views.setTextViewText(
+                UPCOMING_SLOTS[i],
+                "• " + t.title + if (due.isNotEmpty()) " — $due" else "",
+            )
+            views.setViewVisibility(UPCOMING_SLOTS[i], View.VISIBLE)
         }
 
         views.setTextViewText(R.id.widget_done_count, "Done today: ${board.doneToday}")

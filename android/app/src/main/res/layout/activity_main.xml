@@ -199,8 +199,8 @@
                 android:textSize="15sp" />
         </LinearLayout>
 
-        <!-- Pin the widget from inside the app: the reliable path on One UI.
-             Works even when the picker drag fails (e.g. app never opened). -->
+        <!-- Pin the widget from inside the app: opens the launcher's
+             "Add to Home screen" dialog, no widget-picker hunting needed. -->
         <Button
             android:id="@+id/btn_add_widget"
             android:layout_width="match_parent"
