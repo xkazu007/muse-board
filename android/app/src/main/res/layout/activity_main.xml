@@ -198,5 +198,19 @@
                 android:textColor="@color/text"
                 android:textSize="15sp" />
         </LinearLayout>
+
+        <!-- Pin the widget from inside the app: the reliable path on One UI.
+             Works even when the picker drag fails (e.g. app never opened). -->
+        <Button
+            android:id="@+id/btn_add_widget"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/btn_done"
+            android:text="@string/add_widget"
+            android:textAllCaps="false"
+            android:textColor="#ffffff"
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </ScrollView>

@@ -22,4 +22,8 @@
     <string name="board_unreachable">Couldn\'t reach the board. Check your connection.</string>
     <string name="action_failed">That didn\'t work. Try again.</string>
     <string name="widget_help">To add the widget: long-press your home screen → Widgets → Muse Board.</string>
+    <string name="widget_desc">Your Muse task list: the one thing to do now, what\'s next, and today\'s progress.</string>
+    <string name="add_widget">Add widget to home screen</string>
+    <string name="widget_pin_ok">Widget added — check your home screen.</string>
+    <string name="widget_pin_unsupported">Your launcher doesn\'t support adding widgets from the app. Long-press the home screen → Widgets → Muse Board instead.</string>
 </resources>

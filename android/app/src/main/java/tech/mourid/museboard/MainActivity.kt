@@ -1,6 +1,8 @@
 package tech.mourid.museboard
 
 import android.app.Activity
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -60,6 +62,7 @@ class MainActivity : Activity() {
             token = null
             showTokenBox()
         }
+        findViewById<Button>(R.id.btn_add_widget).setOnClickListener { requestPinWidget() }
 
         token = TokenStore.get(this)
         if (token.isNullOrBlank()) {
@@ -73,6 +76,29 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
+    }
+
+    /** Pin the widget from inside the app. This is the reliable path on
+     *  One UI: the picker drag fails with "Couldn't add widget" when the
+     *  app has never been opened (stopped state), and pinning from here
+     *  runs after the app is open, so that state is already cleared. */
+    private fun requestPinWidget() {
+        val manager = getSystemService(AppWidgetManager::class.java)
+        val provider = ComponentName(this, MuseBoardWidget::class.java)
+        if (manager.isRequestPinAppWidgetSupported) {
+            manager.requestPinAppWidget(provider, null, null)
+            Toast.makeText(
+                this,
+                getString(R.string.widget_pin_ok),
+                Toast.LENGTH_SHORT,
+            ).show()
+        } else {
+            Toast.makeText(
+                this,
+                getString(R.string.widget_pin_unsupported),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
     }
 
     private fun showTokenBox() {
