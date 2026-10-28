@@ -89,7 +89,7 @@ echo "== aapt2 link =="
     -I "$PLATFORM" \
     --java "$BUILD/gen" \
     --min-sdk-version 26 --target-sdk-version 34 \
-    --version-code 2 --version-name 1.1 \
+    --version-code 3 --version-name 1.2 \
     "$BUILD/compiled.zip"
 
 # --- 2. Compile Kotlin (+ generated R.java) --------------------------------

@@ -78,10 +78,9 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    /** Pin the widget from inside the app. This is the reliable path on
-     *  One UI: the picker drag fails with "Couldn't add widget" when the
-     *  app has never been opened (stopped state), and pinning from here
-     *  runs after the app is open, so that state is already cleared. */
+    /** Pin the widget from inside the app. requestPinAppWidget only opens
+     *  the launcher's confirmation dialog; the widget is placed once the
+     *  user taps Add there. */
     private fun requestPinWidget() {
         val manager = getSystemService(AppWidgetManager::class.java)
         val provider = ComponentName(this, MuseBoardWidget::class.java)
