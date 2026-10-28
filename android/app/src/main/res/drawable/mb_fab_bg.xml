@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The + button: yellow circle, contained ripple. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/mb_ripple">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/mb_primary" />
+        </shape>
+    </item>
+</ripple>

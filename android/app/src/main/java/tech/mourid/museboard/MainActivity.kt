@@ -7,8 +7,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
@@ -71,6 +73,8 @@ class MainActivity : Activity() {
     private var token: String? = null
     private var board: BoardResponse? = null
     private var tasks: List<BoardTask> = emptyList()
+    /** Group filter chip (issue #12); null = All. */
+    private var groupFilter: String? = null
     private lateinit var offlineNote: View
     /** Set while render() resets the checkbox, so that isn't taken as a tap. */
     private var rendering = false
@@ -133,6 +137,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.btn_refresh).setOnClickListener { loadAll() }
         findViewById<View>(R.id.btn_history).setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
+        }
+        findViewById<View>(R.id.btn_calendar).setOnClickListener {
+            startActivity(Intent(this, CalendarActivity::class.java))
         }
         findViewById<View>(R.id.btn_change_token).setOnClickListener {
             TokenStore.clear(this)
@@ -266,13 +273,19 @@ class MainActivity : Activity() {
         val now = System.currentTimeMillis()
         val open = tasks.filter { it.status == "open" }
         val snoozed = { t: BoardTask -> (parseIso(t.snoozedUntil) ?: 0L) > now }
+        // Groups (issue #12), in queue order. The filter only shows with 2+.
+        val groups = open.sortedBy { it.position }.mapNotNull { it.group }.distinct()
+        if (groupFilter != null && groupFilter !in groups) groupFilter = null
+        showGroupFilter(groups)
+        val inFilter = { t: BoardTask -> groupFilter == null || t.group == groupFilter }
         fill(
             R.id.list_then, R.id.label_then, Kind.OPEN,
-            open.filter { !snoozed(it) && it.id != focus?.id }.sortedBy { it.position },
+            open.filter { !snoozed(it) && it.id != focus?.id && inFilter(it) }.sortedBy { it.position },
+            grouped = groups.isNotEmpty() && groupFilter == null,
         )
         fill(
             R.id.list_later, R.id.label_later, Kind.LATER,
-            open.filter(snoozed).sortedBy { parseIso(it.snoozedUntil) },
+            open.filter { snoozed(it) && inFilter(it) }.sortedBy { parseIso(it.snoozedUntil) },
         )
         fill(
             R.id.list_done, R.id.label_done, Kind.DONE,
@@ -336,12 +349,60 @@ class MainActivity : Activity() {
 
     private enum class Kind { OPEN, LATER, DONE }
 
-    private fun fill(listId: Int, labelId: Int, kind: Kind, tasks: List<BoardTask>) {
+    /** All / one chip per group; tapping one filters Then and Later. */
+    private fun showGroupFilter(groups: List<String>) {
+        val bar = findViewById<View>(R.id.group_filter)
+        val chips = findViewById<LinearLayout>(R.id.group_chips)
+        chips.removeAllViews()
+        if (groups.size < 2) {
+            bar.visibility = View.GONE
+            return
+        }
+        bar.visibility = View.VISIBLE
+        for (name in listOf<String?>(null) + groups) {
+            val selected = name == groupFilter
+            chips.addView(TextView(this).apply {
+                text = name ?: getString(R.string.group_all)
+                gravity = Gravity.CENTER
+                textSize = 14f
+                setPadding(dp(16), 0, dp(16), 0)
+                background = getDrawable(if (selected) R.drawable.mb_chip_selected_inset else R.drawable.mb_chip_tonal_inset)
+                setTextColor(getColor(if (selected) R.color.mb_on_primary else R.color.mb_on_surface))
+                setOnClickListener {
+                    groupFilter = name
+                    board?.let { render(it, tasks) }
+                }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(6) })
+        }
+    }
+
+    private fun fill(listId: Int, labelId: Int, kind: Kind, tasks: List<BoardTask>, grouped: Boolean = false) {
         val list = findViewById<LinearLayout>(listId)
         list.removeAllViews()
         findViewById<View>(labelId).visibility = if (tasks.isEmpty()) View.GONE else View.VISIBLE
         val inflater = LayoutInflater.from(this)
-        for (task in tasks) {
+        // Grouped: each group under its heading, groups in queue order,
+        // ungrouped tasks last under "Tasks".
+        val ordered = if (grouped) {
+            tasks.groupBy { it.group }.entries.sortedWith(compareBy({ it.key == null }, { e -> e.value.minOf { it.position } }))
+                .flatMap { it.value }
+        } else {
+            tasks
+        }
+        var lastGroup: String? = null
+        var first = true
+        for (task in ordered) {
+            if (grouped && (first || task.group != lastGroup)) {
+                list.addView(TextView(this).apply {
+                    text = task.group ?: getString(R.string.group_none)
+                    setTextColor(getColor(R.color.mb_on_surface))
+                    textSize = 15f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setPadding(dp(4), dp(if (first) 8 else 18), 0, 0)
+                })
+                lastGroup = task.group
+                first = false
+            }
             val row = inflater.inflate(R.layout.item_task, list, false) as SwipeRow
             styleSwipe(row, R.dimen.mb_app_row_radius)
             val title = row.findViewById<TextView>(R.id.task_title)
@@ -557,11 +618,13 @@ class MainActivity : Activity() {
     private fun showTokenBox() {
         tokenBox.visibility = View.VISIBLE
         boardBox.visibility = View.GONE
+        findViewById<View>(R.id.btn_add_task).visibility = View.GONE
     }
 
     private fun showBoard() {
         tokenBox.visibility = View.GONE
         boardBox.visibility = View.VISIBLE
+        findViewById<View>(R.id.btn_add_task).visibility = View.VISIBLE
         askForNotificationsOnce()
     }
 
@@ -627,7 +690,7 @@ class MainActivity : Activity() {
     private fun shortDate(day: String): String = try {
         val utc = TimeZone.getTimeZone("UTC")
         val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = utc }.parse(day)
-        SimpleDateFormat("EEE d MMM", Locale.UK).apply { timeZone = utc }.format(parsed!!)
+        SimpleDateFormat("EEEE d MMMM", Locale.UK).apply { timeZone = utc }.format(parsed!!)
     } catch (_: Exception) {
         day
     }

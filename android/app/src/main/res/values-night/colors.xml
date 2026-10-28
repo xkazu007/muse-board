@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Widget tokens, static dark fallback (Android 8 to 11). -->
-    <color name="mb_surface">#23314f</color>
-    <color name="mb_on_surface">#dae2ff</color>
-    <color name="mb_muted">#b0bfe3</color>
-    <color name="mb_primary">#b0c6ff</color>
-    <color name="mb_on_primary">#002d6e</color>
-    <color name="mb_inset">#1a2540</color>
-    <color name="mb_page">#111318</color>
+    <!-- Dark variant: the main look. Near-black page, soft dark-grey cards
+         with a subtle border, warm yellow accent. -->
+    <color name="mb_page">#0E0E10</color>
+    <color name="mb_surface">#1B1B1F</color>
+    <color name="mb_inset">#27272D</color>
+    <color name="mb_border">#2E2E35</color>
+    <color name="mb_on_surface">#F4F4F5</color>
+    <color name="mb_muted">#A1A1AA</color>
+    <color name="mb_primary">#F5C542</color>
+    <color name="mb_on_primary">#1F1800</color>
+    <color name="mb_accent">#F5C542</color>
 </resources>

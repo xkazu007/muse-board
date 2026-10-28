@@ -3,17 +3,24 @@
    Android 12+ the widget uses the wallpaper's colors instead. See
    docs/design-system.md. */
 :root {
+  /* Light variant. The dark one (below) is the main look: near-black,
+     soft dark-grey cards with a subtle border, one warm yellow accent.
+     primary = yellow as a fill (with on-primary on it); accent = the
+     accent as text or a line (deep amber in light: yellow on white is
+     unreadable). Same values as the Android tokens. */
   color-scheme: light;
-  --page: #f9f9ff;
-  --surface: #dae2ff;
-  --on-surface: #001a41;
-  --muted: #3a4a6b;
-  --primary: #2b5bb5;
-  --on-primary: #ffffff;
-  --secondary: #b9c8f2;
-  --on-secondary: #001a41;
-  --inset: #c6d3fa;
-  --error: #ba1a1a;
+  --page: #F7F6F2;
+  --surface: #FFFFFF;
+  --inset: #EFEDE6;
+  --border: #E4E2DA;
+  --on-surface: #18181B;
+  --muted: #57534E;
+  --primary: #F5C542;
+  --on-primary: #1F1800;
+  --accent: #8A6200;
+  --secondary: #EFEDE6;
+  --on-secondary: #18181B;
+  --error: #B3261E;
   --radius: 28px;
   --radius-inner: 20px;
 }
@@ -22,30 +29,34 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #111318;
-    --surface: #23314f;
-    --on-surface: #dae2ff;
-    --muted: #b0bfe3;
-    --primary: #b0c6ff;
-    --on-primary: #002d6e;
-    --secondary: #34466b;
-    --on-secondary: #dae2ff;
-    --inset: #1a2540;
-    --error: #ffb4ab;
+    --page: #0E0E10;
+    --surface: #1B1B1F;
+    --inset: #27272D;
+    --border: #2E2E35;
+    --on-surface: #F4F4F5;
+    --muted: #A1A1AA;
+    --primary: #F5C542;
+    --on-primary: #1F1800;
+    --accent: #F5C542;
+    --secondary: #27272D;
+    --on-secondary: #F4F4F5;
+    --error: #FF8A80;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #111318;
-  --surface: #23314f;
-  --on-surface: #dae2ff;
-  --muted: #b0bfe3;
-  --primary: #b0c6ff;
-  --on-primary: #002d6e;
-  --secondary: #34466b;
-  --on-secondary: #dae2ff;
-  --inset: #1a2540;
-  --error: #ffb4ab;
+  --page: #0E0E10;
+  --surface: #1B1B1F;
+  --inset: #27272D;
+  --border: #2E2E35;
+  --on-surface: #F4F4F5;
+  --muted: #A1A1AA;
+  --primary: #F5C542;
+  --on-primary: #1F1800;
+  --accent: #F5C542;
+  --secondary: #27272D;
+  --on-secondary: #F4F4F5;
+  --error: #FF8A80;
 }
 
 * { box-sizing: border-box; }
@@ -67,13 +78,13 @@ body {
 .theme-toggle[data-mode="auto"] .i-auto,
 .theme-toggle[data-mode="light"] .i-light,
 .theme-toggle[data-mode="dark"] .i-dark { display: block; }
-.brand { font-weight: 600; color: var(--primary); }
+.brand { font-weight: 600; color: var(--accent); }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-.card { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-top: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 14px; }
 .card h2 { margin: 0 0 6px; font-size: 20px; }
 .inset { background: var(--inset); border-radius: var(--radius-inner); padding: 14px 18px; }
 
@@ -114,6 +125,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 15px; }
 li .when { color: var(--muted); white-space: nowrap; }
 li > span:first-child { flex: 1; min-width: 0; }
+li.group-heading { font-weight: 600; font-size: 13px; color: var(--muted); padding: 12px 0 2px; }
+li.group-heading:first-child { padding-top: 2px; }
 .open-link {
   align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px;
   padding: 0 16px; margin-top: 4px; border-radius: 22px;
@@ -123,8 +136,8 @@ li > span:first-child { flex: 1; min-width: 0; }
 .row-link {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; min-height: 44px; margin: -10px 0; border-radius: 22px;
-  color: var(--primary); text-decoration: none; font-size: 18px;
+  color: var(--accent); text-decoration: none; font-size: 18px;
 }
 .error { color: var(--error); }
 .footer { margin-top: 18px; color: var(--muted); font-size: 14px; }
-.link { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline; min-height: 24px; }
+.link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline; min-height: 24px; }

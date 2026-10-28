@@ -41,6 +41,7 @@ that glance is enough to start.
 | `due_at` | The real deadline, if there is one. Shown only when there is no plan. Same time format. |
 | `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
+| `group` | Optional short label, up to 40 characters: "Coursera ML", "Manara", "NutriSynth", "Personal". The app groups its list by it and can filter to one group; the widget ignores it. Set it when the task clearly belongs to a stream of work. |
 | `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00

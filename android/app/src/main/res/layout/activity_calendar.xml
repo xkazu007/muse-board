@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calendar (issue #12): tasks on their plan date (due date as fallback).
+     Month grid or week list; tap a day for its tasks, a task for its page. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/mb_page"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="32dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/cal_back"
+                style="@style/MuseBoard.TopIcon"
+                android:contentDescription="@string/back"
+                android:src="@drawable/mb_ic_back24" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/calendar"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/cal_mode_month"
+                style="@style/MuseBoard.Segment"
+                android:text="@string/cal_month" />
+
+            <TextView
+                android:id="@+id/cal_mode_week"
+                style="@style/MuseBoard.Segment"
+                android:layout_marginStart="4dp"
+                android:text="@string/cal_week" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/cal_prev"
+                style="@style/MuseBoard.TopIcon"
+                android:contentDescription="@string/cal_prev"
+                android:src="@drawable/mb_ic_chevron_left24" />
+
+            <TextView
+                android:id="@+id/cal_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/cal_next"
+                style="@style/MuseBoard.TopIcon"
+                android:contentDescription="@string/cal_next"
+                android:src="@drawable/mb_ic_chevron_right24" />
+        </LinearLayout>
+
+        <!-- Month: weekday initials + 6 rows of 7 days, built in code -->
+        <LinearLayout
+            android:id="@+id/cal_month"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/mb_card_bg"
+            android:orientation="vertical"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/cal_day_label"
+            style="@style/MuseBoard.SectionLabel"
+            android:visibility="visible" />
+
+        <!-- The selected day's tasks (month) or the whole week (week) -->
+        <LinearLayout
+            android:id="@+id/cal_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

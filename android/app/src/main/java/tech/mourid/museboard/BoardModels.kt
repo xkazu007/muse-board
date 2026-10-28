@@ -27,6 +27,8 @@ data class BoardTask(
     val snoozeCount: Int = 0,
     /** Go-to link: where the first step happens. */
     val url: String? = null,
+    /** Optional group label ("Coursera ML"); the app's list groups by it. */
+    val group: String? = null,
 )
 
 data class BoardResponse(
@@ -63,6 +65,7 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     completedAt = obj.stringOrNull("completed_at"),
     snoozeCount = obj.optInt("snooze_count", 0),
     url = obj.stringOrNull("url"),
+    group = obj.stringOrNull("group"),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -91,6 +94,7 @@ fun BoardTask.toJson(): JSONObject = JSONObject()
     .put("completed_at", completedAt ?: JSONObject.NULL)
     .put("snooze_count", snoozeCount)
     .put("url", url ?: JSONObject.NULL)
+    .put("group", group ?: JSONObject.NULL)
 
 fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     date = obj.optString("date", ""),

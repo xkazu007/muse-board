@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Launcher icon background (mipmap-anydpi-v26). -->
-    <color name="widget_bg">#121212</color>
+    <color name="widget_bg">#0E0E10</color>
 
-    <!-- Widget design tokens (docs/design-system.md). This is the static
-         fallback palette for Android 8 to 11, light; values-night holds the
-         dark one. On Android 12+ values-v31 / values-night-v31 swap in the
-         wallpaper-based system colors (Material You). Same values as the
-         web app's CSS variables. -->
-    <color name="mb_surface">#dae2ff</color>
-    <color name="mb_on_surface">#001a41</color>
-    <color name="mb_muted">#3a4a6b</color>
-    <color name="mb_primary">#2b5bb5</color>
-    <color name="mb_on_primary">#ffffff</color>
-    <color name="mb_inset">#c6d3fa</color>
-    <!-- App page background (the web app's "page" token). -->
-    <color name="mb_page">#f9f9ff</color>
+    <!-- Design tokens (docs/design-system.md), light variant; values-night
+         holds the dark one (the main look). Fixed palette: near-black /
+         warm white, one warm yellow accent used sparingly. Same values as
+         the web app's CSS variables. Every text pair is >= 4.5:1. -->
+    <color name="mb_page">#F7F6F2</color>
+    <color name="mb_surface">#FFFFFF</color>
+    <color name="mb_inset">#EFEDE6</color>
+    <color name="mb_border">#E4E2DA</color>
+    <color name="mb_on_surface">#18181B</color>
+    <color name="mb_muted">#57534E</color>
+    <!-- primary = the yellow as a fill (Done, primary buttons), with
+         on_primary on top; accent = the accent as text or a thin line, a
+         deep amber here because yellow on white is unreadable. -->
+    <color name="mb_primary">#F5C542</color>
+    <color name="mb_on_primary">#1F1800</color>
+    <color name="mb_accent">#8A6200</color>
 </resources>

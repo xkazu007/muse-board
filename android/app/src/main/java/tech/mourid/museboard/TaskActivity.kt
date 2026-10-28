@@ -45,6 +45,7 @@ class TaskActivity : Activity() {
     private lateinit var whereEdit: EditText
     private lateinit var notesEdit: EditText
     private lateinit var linkEdit: EditText
+    private lateinit var groupEdit: EditText
     private lateinit var linkOpen: ImageView
     private lateinit var whenValue: TextView
     private lateinit var whenClear: ImageView
@@ -61,6 +62,8 @@ class TaskActivity : Activity() {
     private var filling = false
     /** Edited since opening: a late network refresh must not overwrite it. */
     private var edited = false
+    /** Notes unfolded by "See more" (or by starting to edit them). */
+    private var notesExpanded = false
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppTheme.wrap(newBase))
@@ -82,6 +85,7 @@ class TaskActivity : Activity() {
         whereEdit = findViewById(R.id.task_where_edit)
         notesEdit = findViewById(R.id.task_notes_edit)
         linkEdit = findViewById(R.id.task_link_edit)
+        groupEdit = findViewById(R.id.task_group_edit)
         linkOpen = findViewById(R.id.task_link_open)
         whenValue = findViewById(R.id.task_when_value)
         whenClear = findViewById(R.id.task_when_clear)
@@ -90,6 +94,8 @@ class TaskActivity : Activity() {
         links = findViewById(R.id.task_links)
 
         findViewById<View>(R.id.task_back).setOnClickListener { finish() }
+        findViewById<View>(R.id.task_notes_more).setOnClickListener { expandNotes() }
+        notesEdit.setOnFocusChangeListener { _, focused -> if (focused) expandNotes() }
         titleEdit.onEdit { text ->
             if (text.isBlank()) {
                 pending.remove("title")
@@ -100,6 +106,7 @@ class TaskActivity : Activity() {
         }
         stepEdit.onEdit { queue("first_step", it) }
         whereEdit.onEdit { queue("plan_where", it) }
+        groupEdit.onEdit { queue("group", it) }
         linkEdit.onEdit { typed ->
             val link = normalizeLink(typed)
             linkOpen.visibility = if (link.url != null) View.VISIBLE else View.GONE
@@ -190,12 +197,14 @@ class TaskActivity : Activity() {
         stepEdit.setText(t.firstStep.orEmpty())
         whereEdit.setText(t.planWhere.orEmpty())
         linkEdit.setText(t.url.orEmpty())
+        groupEdit.setText(t.group.orEmpty())
         linkOpen.visibility = if (t.url != null) View.VISIBLE else View.GONE
         notesEdit.setText(t.detail.orEmpty())
         filling = false
         showTime(whenValue, whenClear, t.planAt)
         showTime(dueValue, dueClear, t.dueAt)
         showLinks(t.detail.orEmpty())
+        foldNotes()
         val done = t.status == "done"
         findViewById<TextView>(R.id.task_done).setText(if (done) R.string.undo else R.string.done)
         findViewById<View>(R.id.task_later).visibility = if (done) View.GONE else View.VISIBLE
@@ -216,12 +225,31 @@ class TaskActivity : Activity() {
         clear.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
     }
 
+    /** Long notes start folded to [NOTES_FOLDED_LINES] lines with "See more"
+     *  (issue #13); short ones show whole. */
+    private fun foldNotes() {
+        if (notesExpanded) return
+        notesEdit.post {
+            if (notesEdit.lineCount > NOTES_FOLDED_LINES) {
+                notesEdit.maxLines = NOTES_FOLDED_LINES
+                findViewById<View>(R.id.task_notes_more).visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun expandNotes() {
+        notesExpanded = true
+        notesEdit.maxLines = Int.MAX_VALUE
+        findViewById<View>(R.id.task_notes_more).visibility = View.GONE
+    }
+
     /** One tappable row per link found in the notes (up to 5). */
     private fun showLinks(notes: String) {
         links.removeAllViews()
         val matcher = Patterns.WEB_URL.matcher(notes)
         val found = LinkedHashSet<String>()
         while (matcher.find() && found.size < 5) found.add(matcher.group())
+        findViewById<View>(R.id.task_links_label).visibility = if (found.isEmpty()) View.GONE else View.VISIBLE
         for (url in found) {
             val row = layoutInflater.inflate(R.layout.action_sheet_row, links, false)
             row.findViewById<ImageView>(R.id.sheet_icon).setImageResource(R.drawable.mb_ic_link24)
@@ -229,7 +257,7 @@ class TaskActivity : Activity() {
                 text = url.removePrefix("https://").removePrefix("http://")
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(getColor(R.color.mb_primary))
+                setTextColor(getColor(R.color.mb_accent))
             }
             row.setOnClickListener { openLink(this, url) }
             links.addView(row)
@@ -332,6 +360,7 @@ class TaskActivity : Activity() {
         const val EXTRA_SHRINK = "shrink"
         const val EXTRA_TASK_JSON = "task_json"
         private const val SAVE_DELAY_MS = 700L
+        private const val NOTES_FOLDED_LINES = 4
 
         /** Opens [task]; the page shows it at once and refreshes behind. */
         fun intent(context: Context, task: BoardTask, shrink: Boolean = false): Intent =

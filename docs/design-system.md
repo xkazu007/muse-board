@@ -1,29 +1,35 @@
 # Muse Board design system
 
-Direction: **Focus + Material You**. One task, shown as its first step, one
-big Done. Colours come from the owner's wallpaper on Android 12+, with a
-fixed blue palette everywhere else. Minimal means fewer things on screen,
-not smaller things.
+Direction: **Focus, dark and yellow**. One task, shown as its first step,
+one big Done. Near-black surfaces, soft dark-grey cards with a subtle
+border, and one warm yellow accent used sparingly (the Done circle, the
++ button, the selected day, a few labels). Light mode exists (theme
+toggle, or the phone in light mode) with the same structure on warm white.
+Minimal means fewer things on screen, not smaller things.
 
 ## Colour tokens
 
 Same names everywhere: `--name` in `web/styles.css`, `@color/mb_name` on
-Android.
+Android (`values/` light, `values-night/` dark). The widget uses the same
+tokens and follows the launcher's light / dark.
 
-| Token | Use | Light (static) | Dark (static) | Android 12+ light | Android 12+ dark |
-|---|---|---|---|---|---|
-| `surface` | Widget / card background | `#dae2ff` | `#23314f` | `system_accent1_100` | `system_accent1_800` |
-| `on-surface` | Main text, the step | `#001a41` | `#dae2ff` | `system_accent1_900` | `system_accent1_50` |
-| `muted` | Meta line, task title, times, Later | `#3a4a6b` | `#b0bfe3` | `system_accent2_700` | `system_accent2_200` |
-| `primary` | Done button | `#2b5bb5` | `#b0c6ff` | `system_accent1_600` | `system_accent1_200` |
-| `on-primary` | The check mark | `#ffffff` | `#002d6e` | `system_accent1_0` | `system_accent1_800` |
-| `inset` | The "Then" list box | `#c6d3fa` | `#1a2540` | `system_accent2_100` | `system_accent2_900` |
+| Token | Use | Dark (main) | Light |
+|---|---|---|---|
+| `page` | App / web background | `#0E0E10` | `#F7F6F2` |
+| `surface` | Cards, widget, sheets | `#1B1B1F` | `#FFFFFF` |
+| `inset` | "Then" box, chips, tonal pills | `#27272D` | `#EFEDE6` |
+| `border` | 1px card / widget outline | `#2E2E35` | `#E4E2DA` |
+| `on-surface` | Main text, the step | `#F4F4F5` | `#18181B` |
+| `muted` | Meta line, task title, times | `#A1A1AA` | `#57534E` |
+| `primary` | The yellow as a **fill**: Done, +, selected day, primary buttons | `#F5C542` | `#F5C542` |
+| `on-primary` | Text / check on `primary` | `#1F1800` | `#1F1800` |
+| `accent` | The yellow as **text or a thin line**: brand, links, Undo, the empty Done ring, today | `#F5C542` | `#8A6200` |
 
-Web only: `page` `#f9f9ff` / `#111318`, `secondary` `#b9c8f2` / `#34466b`
-(Later chips), `error` `#ba1a1a` / `#ffb4ab`.
+`primary` and `accent` are split because yellow text on white is
+unreadable: in light mode the accent becomes a deep amber.
 
-Every text pair above passes WCAG AA (4.5:1); the lowest is `muted` on
-`inset`, light, at 5.9:1. Check any new pair before using it.
+Every text pair passes WCAG AA (4.5:1); the lowest is `accent` on `inset`,
+light, at 4.68:1. Check any new pair before using it.
 
 ## Type
 
@@ -39,10 +45,11 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 
 ## Shape and space
 
-- Corner radius: the launcher's own on Android 12+
+- Corner radius: the launcher's own for the widget on Android 12+
   (`system_app_widget_background_radius`, inner list uses
-  `system_app_widget_inner_radius`); 24dp / 16dp before that; 28px / 20px
-  on the web.
+  `system_app_widget_inner_radius`), 24dp / 16dp before that. App cards
+  28dp, rows 20dp; web 28px / 20px. Cards and the widget carry a 1px
+  `border`.
 - Padding 16dp inside the widget. Gaps: 4dp under the step, 8dp before the
   Then line, 12 to 14dp between blocks.
 - No borders, dividers, bullets or section labels in the widget. Space and
@@ -82,13 +89,26 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 
 ## App screens
 
-- **Quick-add** (bottom sheet, from "Add a task" under the Then list):
+- **Top bar**: "Muse Board" in `accent`, then Calendar, History and Theme
+  icons (48dp). Under it a big bold **Today** (34sp) and the date.
+- **+ button**: a 64dp yellow circle, bottom centre, opens quick-add.
+- **Calendar** (top bar): month grid with a dot on days that have tasks
+  (plan date, due date as fallback), the selected day in a yellow circle,
+  today in `accent`; tap a day for its tasks. Week view lists the week's
+  days that have tasks. Tap a task for its detail page.
+- **Groups**: an optional short `group` per task. When any task has one,
+  the Then list shows group headings (ungrouped last, under "Tasks"); with
+  2+ groups, All / group chips filter Then and Later. The widget ignores
+  groups.
+
+- **Quick-add** (bottom sheet, from the + button):
   title, first step (both required, the 2-minute rule written under the
   field), When (the phone's own date and time pickers) and Where. Adds to
   the end of the queue.
-- **Task detail page** (tap any task card): big editable title, first step,
-  When / Where / Due rows (tap to pick, × to clear), notes with each link
-  as a tappable row, Done (or Undo) and Later at the bottom. Everything
+- **Task detail page** (tap any task card): big editable title, first
+  step, notes (long ones folded to 4 lines with "See more"), then When /
+  Where / Link / Group / Due rows (tap to pick, × to clear), a Links section
+  for links found in the notes, Done (or Undo) and Later at the bottom. Everything
   saves on its own: "Saving…" / "Saved" at the top right.
 - **Too big?** A small tonal chip on a task snoozed twice since its step
   last changed. Opens the detail page with the first step focused and "Try
@@ -102,7 +122,7 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 - **Go-to link**: when a task has a `url`, a small "Open ↗" (widget: on the
   Then line; app: a chip on the focus card and a link icon on rows; web: a
   chip and a ↗ on rows). Secondary, never bigger than the step.
-- **History** (app footer): every completed task by day, newest first.
+- **History** (top bar): every completed task by day, newest first.
   Swipe right or long-press to reopen.
 
 ## Feel (perceived speed)
@@ -148,9 +168,10 @@ Undo bar for 6 s; on the widget the Undo stays for 60 s.
 
 Default 4×2 (the Focus layout). Resizable from 3×2 to 4×4; from about 260dp
 tall (usually 4 rows) the Then list appears (Android 12+ picks the layout per size). This
-meets Google's widget quality tiers: 4×2 support, accurate picker preview
-(`widget_preview.xml`), instant update after actions, dynamic colour,
-system corner radius.
+meets Google's widget quality tiers' baseline: 4×2 support, accurate picker
+preview (`widget_preview.xml`), instant update after actions, system corner
+radius. (The top tier also asks for wallpaper-based colour; the board
+chose its own dark-and-yellow identity instead.)
 
 ## Copy
 

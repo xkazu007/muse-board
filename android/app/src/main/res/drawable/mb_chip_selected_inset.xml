@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selected filter chip: the accent fill, 48dp to tap, 36dp to see. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetBottom="6dp"
+    android:insetTop="6dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/mb_primary" />
+        <corners android:radius="18dp" />
+    </shape>
+</inset>

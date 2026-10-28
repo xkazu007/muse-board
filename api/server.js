@@ -25,7 +25,8 @@
  * Task fields: title, detail (notes, up to 4000 chars), first_step (the
  * 2-minute starter the widget shows big), due_at, plan_at + plan_where (the
  * "when · where" plan; the phone reminds at plan_at), position (lower =
- * sooner in the queue), url (go-to link, http/https). Read-only: snooze_count (Laters since first_step
+ * sooner in the queue), url (go-to link, http/https), group (short
+ * label; the app groups its list by it). Read-only: snooze_count (Laters since first_step
  * last changed; the app offers "Too big?" at 2).
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
@@ -84,6 +85,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_where TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snooze_count INT NOT NULL DEFAULT 0;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS url TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_group TEXT;
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -123,7 +125,7 @@ const SEED = [
 ];
 
 const TASK_COLUMNS =
-  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url";
+  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url, task_group";
 
 async function initDb() {
   await pool.query(SCHEMA);
@@ -181,6 +183,7 @@ function publicTask(r) {
     // more: the app offers "Too big? Make it smaller".
     snooze_count: r.snooze_count,
     url: r.url,
+    group: r.task_group,
   };
 }
 
@@ -218,6 +221,9 @@ const FIELDS = {
   // Go-to link: where the first step happens (the lesson, the Zoom room).
   // Format only (http / https), like Notion; the destination isn't checked.
   url: { kind: "url", max: 2000 },
+  // Optional group ("Coursera ML", "Manara"): the app's list is grouped by
+  // it. Stored as task_group ("group" is an SQL keyword).
+  group: { kind: "text", max: 40, column: "task_group" },
   due_at: { kind: "time" },
   plan_at: { kind: "time" },
   position: { kind: "int" },
@@ -339,7 +345,7 @@ app.post("/api/tasks", requireAuth, async (req, res) => {
     const values = [];
     for (const name of Object.keys(FIELDS)) {
       if (body[name] === undefined) continue;
-      columns.push(name);
+      columns.push(FIELDS[name].column || name);
       values.push(storedValue(name, body[name]));
     }
     if (!columns.includes("position")) {
@@ -374,7 +380,7 @@ async function updateTask(req, res) {
   for (const name of Object.keys(FIELDS)) {
     if (body[name] === undefined) continue;
     values.push(storedValue(name, body[name]));
-    sets.push(`${name} = $${values.length}`);
+    sets.push(`${FIELDS[name].column || name} = $${values.length}`);
   }
   if (sets.length === 0) {
     return res.status(400).json({ error: "nothing to update" });

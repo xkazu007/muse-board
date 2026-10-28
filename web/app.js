@@ -134,7 +134,21 @@ async function loadBoard() {
       li.textContent = "Nothing else lined up.";
       ul.appendChild(li);
     }
-    for (const t of b.upcoming) {
+    // Groups (issue #12): headings when any upcoming task has one,
+    // ungrouped ones last under "Tasks".
+    const grouped = b.upcoming.some((t) => t.group);
+    const ordered = grouped
+      ? [...b.upcoming].sort((x, y) => (x.group ? 0 : 1) - (y.group ? 0 : 1))
+      : b.upcoming;
+    let lastGroup;
+    for (const t of ordered) {
+      if (grouped && t.group !== lastGroup) {
+        const heading = document.createElement("li");
+        heading.className = "group-heading";
+        heading.textContent = t.group || "Tasks";
+        ul.appendChild(heading);
+        lastGroup = t.group;
+      }
       const li = document.createElement("li");
       const title = document.createElement("span");
       title.textContent = t.title;

@@ -21,7 +21,27 @@
         <item name="android:paddingStart">10dp</item>
         <item name="android:paddingEnd">10dp</item>
         <item name="android:background">@drawable/mb_ripple_rounded</item>
-        <item name="android:textColor">@color/mb_primary</item>
+        <item name="android:textColor">@color/mb_accent</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Icon button in the app's top bar. -->
+    <style name="MuseBoard.TopIcon" parent="">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:background">@drawable/mb_ripple_rounded</item>
+        <item name="android:scaleType">center</item>
+    </style>
+
+    <!-- Month / Week switch in the calendar's top bar. -->
+    <style name="MuseBoard.Segment" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minWidth">56dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textColor">@color/mb_on_surface</item>
         <item name="android:textSize">14sp</item>
     </style>
 

@@ -24,6 +24,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Calendar: tasks by plan date (due date as fallback) -->
+        <activity
+            android:name=".CalendarActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <!-- History: all completed tasks, by day -->
         <activity
             android:name=".HistoryActivity"
