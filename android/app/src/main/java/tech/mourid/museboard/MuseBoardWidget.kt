@@ -13,6 +13,12 @@ class MuseBoardWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
+        WidgetUpdater.showLoading(context, appWidgetIds)
+        // Re-arm the 30-minute tick here too, not only in onEnabled: a force
+        // stop (or One UI putting the app to sleep) cancels the alarm, and
+        // onEnabled never runs again for a widget that is already placed.
+        // Re-arming replaces the existing alarm, so this is safe to repeat.
+        WidgetUpdater.schedulePeriodic(context)
         WidgetUpdater.requestRefresh(context)
     }
 

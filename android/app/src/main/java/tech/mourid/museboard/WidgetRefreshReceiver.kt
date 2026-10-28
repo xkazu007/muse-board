@@ -35,6 +35,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
                         WidgetUpdater.updateAll(context, board)
                     }
                 }
+            } catch (_: UnauthorizedException) {
+                WidgetUpdater.updateAllTokenRejected(context)
             } catch (_: Exception) {
                 WidgetUpdater.updateAllError(context)
             } finally {

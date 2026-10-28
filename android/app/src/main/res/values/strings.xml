@@ -26,5 +26,15 @@
     <string name="add_widget">Add widget to home screen</string>
     <string name="widget_pin_ok">Tap Add in the dialog to place the widget.</string>
     <string name="widget_loading">Loading your board…</string>
+    <string name="widget_tap_refresh">Tap to refresh.</string>
+    <string name="widget_pin_failed">Couldn\'t open the add-widget dialog. Long-press the home screen → Widgets → Muse Board instead.</string>
+    <string name="undo">Undo</string>
+    <!-- Sample content for the widget picker preview (widget_preview.xml) -->
+    <string name="preview_date">2026-10-28</string>
+    <string name="preview_focus_title">Watch the 7-min ML video</string>
+    <string name="preview_focus_detail">Coursera ML · Wed 28 Oct, 23:59</string>
+    <string name="preview_upcoming_1">• NutriSynth prep — Fri 30 Oct, 12:00</string>
+    <string name="preview_upcoming_2">• SA project — Sat 28 Nov, 23:59</string>
+    <string name="preview_done_count">Done today: 2</string>
     <string name="widget_pin_unsupported">Your launcher doesn\'t support adding widgets from the app. Long-press the home screen → Widgets → Muse Board instead.</string>
 </resources>

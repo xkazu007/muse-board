@@ -9,10 +9,16 @@
  *   POST /api/tasks              -> { title, detail?, due_at? } creates a task
  *   POST /api/tasks/:id/complete -> mark done (completed_at = now)
  *   POST /api/tasks/:id/snooze   -> "not now": hidden from focus until tomorrow
+ *   POST /api/tasks/:id/reopen   -> undo a "done" (back to open)
+ *   PATCH /api/tasks/:id         -> { title?, detail?, due_at? } edits a task
  *   GET  /health                 -> { ok: true } (no auth)
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
- * "Today" is computed in Africa/Casablanca time.
+ * "Today" is computed in Africa/Casablanca time, by Postgres (its tz data),
+ * not by Node: the ICU tz data bundled with Node lags behind real changes
+ * (Morocco moved to permanent UTC+0 on 2026-09-20; Node 22's 2025b data
+ * still says +01). A due_at sent without a UTC offset is read as
+ * Casablanca local time, so task creators don't need to know the offset.
  */
 
 const crypto = require("node:crypto");
@@ -34,7 +40,12 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL, max: 5 });
+// Session time zone: offset-less due_at strings are read as Casablanca time.
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  max: 5,
+  options: `-c TimeZone=${TZ}`,
+});
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS tasks (
@@ -51,30 +62,31 @@ CREATE TABLE IF NOT EXISTS tasks (
 `;
 
 // Minimal, factual seed from Zakaria's real task list (2026-10-27).
-// Only inserted when the table is empty.
+// Only inserted when the table is empty. Times carry no offset, so they
+// are read as Casablanca local time (see the session time zone above).
 const SEED = [
   {
     title: "Watch the 7-min ML video",
     detail: "Supervised learning part 2 — Coursera ML",
-    due_at: "2026-10-28T23:59:00+01:00",
+    due_at: "2026-10-28T23:59:00",
     position: 1,
   },
   {
     title: "AI Practitioner live session",
     detail: "Manara — Wed Oct 28, 16:00–18:00",
-    due_at: "2026-10-28T16:00:00+01:00",
+    due_at: "2026-10-28T16:00:00",
     position: 2,
   },
   {
     title: "NutriSynth prep",
     detail: "Meeting with Manal — Fri Oct 30, 12:00",
-    due_at: "2026-10-30T12:00:00+01:00",
+    due_at: "2026-10-30T12:00:00",
     position: 3,
   },
   {
     title: "SA project",
     detail: "AWS Solutions Architect — due Nov 28",
-    due_at: "2026-11-28T23:59:00+01:00",
+    due_at: "2026-11-28T23:59:00",
     position: 4,
   },
 ];
@@ -149,13 +161,14 @@ app.get("/api/board", requireAuth, async (_req, res) => {
     });
     const upcoming = rest.slice(0, 3).map(publicTask);
     const { rows: doneRows } = await pool.query(
-      `SELECT COUNT(*)::int AS n FROM tasks
+      `SELECT COUNT(*)::int AS n,
+              to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS today
+       FROM tasks
        WHERE status = 'done'
          AND (completed_at AT TIME ZONE $1)::date = (now() AT TIME ZONE $1)::date`,
       [TZ],
     );
-    const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
-    res.json({ date: today, focus, upcoming, doneToday: doneRows[0].n });
+    res.json({ date: doneRows[0].today, focus, upcoming, doneToday: doneRows[0].n });
   } catch (err) {
     console.error("GET /api/board failed:", err);
     res.status(500).json({ error: "internal error" });
@@ -174,21 +187,43 @@ app.get("/api/tasks", requireAuth, async (_req, res) => {
   }
 });
 
-app.post("/api/tasks", requireAuth, async (req, res) => {
-  const { title, detail, due_at } = req.body || {};
-  if (!title || typeof title !== "string") {
-    return res.status(400).json({ error: "title is required" });
+// Postgres error codes for a due_at it cannot read as a timestamp.
+const BAD_DATETIME_CODES = new Set(["22007", "22008"]);
+
+/** Checks the editable fields present in `body`. Returns an error message,
+ *  or null when every present field is valid. */
+function validateTaskFields(body, { requireTitle }) {
+  const { title, detail, due_at } = body;
+  if (requireTitle || title !== undefined) {
+    if (typeof title !== "string" || !title.trim()) return "title is required";
   }
+  if (detail !== undefined && detail !== null && typeof detail !== "string") {
+    return "detail must be a string or null";
+  }
+  if (due_at !== undefined && due_at !== null && typeof due_at !== "string") {
+    return "due_at must be an ISO date-time string or null";
+  }
+  return null;
+}
+
+app.post("/api/tasks", requireAuth, async (req, res) => {
+  const body = req.body || {};
+  const invalid = validateTaskFields(body, { requireTitle: true });
+  if (invalid) return res.status(400).json({ error: invalid });
+  const { title, detail, due_at } = body;
   try {
     const { rows: maxRows } = await pool.query(
       "SELECT COALESCE(MAX(position), 0)::int AS m FROM tasks",
     );
     const { rows } = await pool.query(
       "INSERT INTO tasks (title, detail, due_at, position) VALUES ($1, $2, $3, $4) RETURNING id, title, detail, due_at, position, status, completed_at",
-      [title, detail || null, due_at || null, maxRows[0].m + 1],
+      [title.trim(), detail || null, due_at || null, maxRows[0].m + 1],
     );
     res.status(201).json({ task: publicTask(rows[0]) });
   } catch (err) {
+    if (BAD_DATETIME_CODES.has(err.code)) {
+      return res.status(400).json({ error: "due_at is not a valid date-time" });
+    }
     console.error("POST /api/tasks failed:", err);
     res.status(500).json({ error: "internal error" });
   }
@@ -230,6 +265,61 @@ app.post("/api/tasks/:id/snooze", requireAuth, async (req, res) => {
     res.json({ task: publicTask(rows[0]) });
   } catch (err) {
     console.error("POST /api/tasks/:id/snooze failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+app.post("/api/tasks/:id/reopen", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "bad id" });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE tasks SET status = 'open', completed_at = NULL
+       WHERE id = $1 AND status = 'done'
+       RETURNING id, title, detail, due_at, position, status, completed_at`,
+      [id],
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "task not found or not done" });
+    }
+    res.json({ task: publicTask(rows[0]) });
+  } catch (err) {
+    console.error("POST /api/tasks/:id/reopen failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "bad id" });
+  const body = req.body || {};
+  const invalid = validateTaskFields(body, { requireTitle: false });
+  if (invalid) return res.status(400).json({ error: invalid });
+  const sets = [];
+  const values = [id];
+  for (const field of ["title", "detail", "due_at"]) {
+    if (body[field] === undefined) continue;
+    const value = field === "title" ? body.title.trim() : body[field] || null;
+    values.push(value);
+    sets.push(`${field} = $${values.length}`);
+  }
+  if (sets.length === 0) {
+    return res.status(400).json({ error: "nothing to update" });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE tasks SET ${sets.join(", ")}
+       WHERE id = $1
+       RETURNING id, title, detail, due_at, position, status, completed_at`,
+      values,
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "task not found" });
+    res.json({ task: publicTask(rows[0]) });
+  } catch (err) {
+    if (BAD_DATETIME_CODES.has(err.code)) {
+      return res.status(400).json({ error: "due_at is not a valid date-time" });
+    }
+    console.error("PATCH /api/tasks/:id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
