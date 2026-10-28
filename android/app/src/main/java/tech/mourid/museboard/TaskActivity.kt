@@ -30,6 +30,8 @@ import org.json.JSONObject
  * Notion-style: title, first step, when / where / due and notes are edited
  * in place and save on their own (text after a short pause, dates at once,
  * anything pending when leaving). Links in the notes get a tappable row.
+ * Under the first step sit the blocks Muse wrote (TaskBlocks): text,
+ * buttons, checklist items the owner ticks (saved like any edit), toggles.
  * Done and Later work from here too. Opened with [EXTRA_SHRINK] (the "Too
  * big?" chip, issue #7) it focuses the first step with a hint.
  */
@@ -52,6 +54,7 @@ class TaskActivity : Activity() {
     private lateinit var dueValue: TextView
     private lateinit var dueClear: ImageView
     private lateinit var links: LinearLayout
+    private lateinit var blocks: TaskBlocks
 
     private var token: String? = null
     private var taskId = -1
@@ -92,6 +95,7 @@ class TaskActivity : Activity() {
         dueValue = findViewById(R.id.task_due_value)
         dueClear = findViewById(R.id.task_due_clear)
         links = findViewById(R.id.task_links)
+        blocks = TaskBlocks(this, findViewById(R.id.task_blocks)) { list -> queue("blocks", list) }
 
         findViewById<View>(R.id.task_back).setOnClickListener { finish() }
         findViewById<View>(R.id.task_notes_more).setOnClickListener { expandNotes() }
@@ -204,6 +208,7 @@ class TaskActivity : Activity() {
         showTime(whenValue, whenClear, t.planAt)
         showTime(dueValue, dueClear, t.dueAt)
         showLinks(t.detail.orEmpty())
+        blocks.show(t.blocks)
         foldNotes()
         val done = t.status == "done"
         findViewById<TextView>(R.id.task_done).setText(if (done) R.string.undo else R.string.done)

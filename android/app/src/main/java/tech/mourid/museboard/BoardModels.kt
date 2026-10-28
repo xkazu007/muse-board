@@ -1,5 +1,6 @@
 package tech.mourid.museboard
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -29,6 +30,9 @@ data class BoardTask(
     val url: String? = null,
     /** Optional group label ("Coursera ML"); the app's list groups by it. */
     val group: String? = null,
+    /** The detail page's blocks (text, buttons, checks…), as JSON array
+     *  text; null when there are none. See TaskBlocks. */
+    val blocks: String? = null,
 )
 
 data class BoardResponse(
@@ -66,6 +70,7 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     snoozeCount = obj.optInt("snooze_count", 0),
     url = obj.stringOrNull("url"),
     group = obj.stringOrNull("group"),
+    blocks = obj.optJSONArray("blocks")?.takeIf { it.length() > 0 }?.toString(),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -95,6 +100,7 @@ fun BoardTask.toJson(): JSONObject = JSONObject()
     .put("snooze_count", snoozeCount)
     .put("url", url ?: JSONObject.NULL)
     .put("group", group ?: JSONObject.NULL)
+    .put("blocks", blocks?.let { JSONArray(it) } ?: JSONArray())
 
 fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     date = obj.optString("date", ""),

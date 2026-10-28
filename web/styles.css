@@ -139,5 +139,22 @@ li.group-heading:first-child { padding-top: 2px; }
   color: var(--accent); text-decoration: none; font-size: 18px;
 }
 .error { color: var(--error); }
+
+/* "More" on the focus card: the blocks Muse wrote (text, buttons, checks, toggles). */
+.more > summary { min-height: 48px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; list-style: none; }
+.more > summary::-webkit-details-marker, .toggle summary::-webkit-details-marker { display: none; }
+.more > summary::before, .toggle summary::before { content: "›"; display: inline-block; font-size: 18px; transition: transform .15s; }
+.more[open] > summary::before, .toggle[open] > summary::before { transform: rotate(90deg); }
+.blocks { display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
+.blocks h3 { margin: 10px 0 0; font-size: 16px; }
+.blocks p { margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.blocks p a { color: var(--accent); }
+.block-btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border-radius: 24px; background: var(--inset); color: var(--on-surface); font-weight: 600; font-size: 15px; text-decoration: none; padding: 0 18px; }
+.block-btn:hover { filter: brightness(1.06); }
+.check { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; flex: none; }
+.check input:checked + span { text-decoration: line-through; opacity: .55; }
+.toggle summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; }
+.toggle p { padding: 0 0 6px 18px; }
 .footer { margin-top: 18px; color: var(--muted); font-size: 14px; }
 .link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline; min-height: 24px; }

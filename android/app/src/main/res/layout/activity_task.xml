@@ -100,6 +100,16 @@
             android:textColorHint="@color/mb_muted"
             android:textSize="18sp" />
 
+        <!-- Blocks Muse writes (text, buttons, checks, toggles), built by
+             TaskBlocks -->
+        <LinearLayout
+            android:id="@+id/task_blocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
         <TextView
             style="@style/MuseBoard.SectionLabel"
             android:layout_marginTop="20dp"

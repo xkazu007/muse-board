@@ -26,7 +26,9 @@
  * 2-minute starter the widget shows big), due_at, plan_at + plan_where (the
  * "when · where" plan; the phone reminds at plan_at), position (lower =
  * sooner in the queue), url (go-to link, http/https), group (short
- * label; the app groups its list by it). Read-only: snooze_count (Laters since first_step
+ * label; the app groups its list by it), blocks (what the detail page shows,
+ * written by Muse: text, headings, link buttons, checklist items, toggles;
+ * see BLOCK_TYPES). Read-only: snooze_count (Laters since first_step
  * last changed; the app offers "Too big?" at 2).
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
@@ -86,6 +88,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snooze_count INT NOT NULL DEFAULT 0;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS url TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_group TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS blocks JSONB;
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -125,7 +128,7 @@ const SEED = [
 ];
 
 const TASK_COLUMNS =
-  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url, task_group";
+  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url, task_group, blocks";
 
 async function initDb() {
   await pool.query(SCHEMA);
@@ -184,6 +187,7 @@ function publicTask(r) {
     snooze_count: r.snooze_count,
     url: r.url,
     group: r.task_group,
+    blocks: r.blocks || [],
   };
 }
 
@@ -227,7 +231,52 @@ const FIELDS = {
   due_at: { kind: "time" },
   plan_at: { kind: "time" },
   position: { kind: "int" },
+  // The detail page's content, an ordered list (see BLOCK_TYPES).
+  blocks: { kind: "blocks" },
 };
+
+/** Block types and the text each carries (key -> max length). A button
+ *  also has a `url` (http / https), a check a `done` flag the owner ticks. */
+const BLOCK_TYPES = {
+  heading: { text: 80 },
+  text: { text: 2000 },
+  button: { label: 40 },
+  check: { text: 200 },
+  toggle: { text: 120, body: 2000 },
+};
+const MAX_BLOCKS = 40;
+
+/** `{ blocks }` cleaned up (trimmed, unknown keys dropped), or `{ error }`. */
+function cleanBlocks(value) {
+  if (!Array.isArray(value)) return { error: "blocks must be an array or null" };
+  if (value.length > MAX_BLOCKS) return { error: `blocks has more than ${MAX_BLOCKS} items` };
+  const blocks = [];
+  for (const [i, b] of value.entries()) {
+    const at = `blocks[${i}]`;
+    if (!b || typeof b !== "object" || Array.isArray(b)) return { error: `${at} must be an object` };
+    const texts = BLOCK_TYPES[b.type];
+    if (!texts) return { error: `${at}.type must be one of ${Object.keys(BLOCK_TYPES).join(", ")}` };
+    const clean = { type: b.type };
+    for (const [key, max] of Object.entries(texts)) {
+      if (typeof b[key] !== "string" || !b[key].trim()) return { error: `${at}.${key} is required` };
+      clean[key] = b[key].trim();
+      if (clean[key].length > max) return { error: `${at}.${key} is longer than ${max} characters` };
+    }
+    if (b.type === "button") {
+      const url = typeof b.url === "string" ? b.url.trim() : "";
+      if (!/^https?:\/\/\S+$/i.test(url) || url.length > 2000) {
+        return { error: `${at}.url must start with http:// or https://` };
+      }
+      clean.url = url;
+    }
+    if (b.type === "check") {
+      if (b.done !== undefined && typeof b.done !== "boolean") return { error: `${at}.done must be true or false` };
+      clean.done = b.done === true;
+    }
+    blocks.push(clean);
+  }
+  return { blocks };
+}
 
 /** Checks the editable fields present in `body`. Returns an error message,
  *  or null when every present field is valid. */
@@ -236,6 +285,12 @@ function validateTaskFields(body, { creating }) {
     const value = body[name];
     if (value === undefined) {
       if (creating && spec.required) return `${name} is required`;
+      continue;
+    }
+    if (spec.kind === "blocks") {
+      if (value === null) continue;
+      const { error } = cleanBlocks(value);
+      if (error) return error;
       continue;
     }
     if (spec.kind === "int") {
@@ -266,6 +321,12 @@ function validateTaskFields(body, { creating }) {
 /** The value stored for a field: trimmed text, empty text as null. */
 function storedValue(name, value) {
   if (value === null || FIELDS[name].kind === "int") return value;
+  // JSON text for the jsonb column (pg would send a JS array as a Postgres
+  // array); an empty list is stored as null.
+  if (FIELDS[name].kind === "blocks") {
+    const { blocks } = cleanBlocks(value);
+    return blocks.length ? JSON.stringify(blocks) : null;
+  }
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
 }

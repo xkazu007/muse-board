@@ -11,6 +11,9 @@ try {
   // Storage blocked: the token box shows and the token lives for this visit.
 }
 let focusId = null;
+/** The focus task's blocks as last shown, and the task they belong to. */
+let focusBlocks = [];
+let moreOpenFor = null;
 
 async function api(path, method, body) {
   const res = await fetch(path, {
@@ -123,6 +126,7 @@ async function loadBoard() {
       openLink.classList.add("hidden");
       openLink.removeAttribute("href");
     }
+    showBlocks(f);
     $("btn-done").disabled = !f;
     $("btn-later").disabled = !f;
 
@@ -178,6 +182,92 @@ async function loadBoard() {
     } else {
       status.textContent = "Couldn't reach the board. Check your connection and tap Refresh.";
     }
+  }
+}
+
+// --- Blocks (Muse's content for a task) --------------------------------------
+
+/** Text with its web links made clickable, built from nodes (never HTML). */
+function linkified(text) {
+  const p = document.createElement("p");
+  let last = 0;
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"]+/gi)) {
+    const url = m[0].replace(/[.,;:!?)\]]+$/, "");
+    p.append(text.slice(last, m.index));
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = url.replace(/^https?:\/\//i, "");
+    p.append(a);
+    last = m.index + url.length;
+  }
+  p.append(text.slice(last));
+  return p;
+}
+
+/** The focus card's "More": hidden when the task has no blocks; stays
+ *  open across refreshes while it's the same task. */
+function showBlocks(task) {
+  const more = $("focus-more");
+  const box = $("focus-blocks");
+  focusBlocks = task && Array.isArray(task.blocks) ? task.blocks : [];
+  box.replaceChildren();
+  focusBlocks.forEach((b, i) => {
+    if (b.type === "heading") {
+      const h = document.createElement("h3");
+      h.textContent = b.text;
+      box.append(h);
+    } else if (b.type === "text") {
+      box.append(linkified(b.text));
+    } else if (b.type === "button" && safeUrl(b.url)) {
+      const a = document.createElement("a");
+      a.className = "block-btn";
+      a.href = b.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = b.label + " ↗";
+      box.append(a);
+    } else if (b.type === "check") {
+      const label = document.createElement("label");
+      label.className = "check";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = !!b.done;
+      input.addEventListener("change", () => tickBlock(task.id, i, input));
+      const span = document.createElement("span");
+      span.textContent = b.text;
+      label.append(input, span);
+      box.append(label);
+    } else if (b.type === "toggle") {
+      const d = document.createElement("details");
+      d.className = "toggle";
+      const s = document.createElement("summary");
+      s.textContent = b.text;
+      d.append(s, linkified(b.body));
+      box.append(d);
+    }
+    // Unknown types are skipped, so newer content never shows broken.
+  });
+  const has = box.childElementCount > 0;
+  more.classList.toggle("hidden", !has);
+  if (!task || moreOpenFor !== task.id) more.open = false;
+}
+
+$("focus-more").addEventListener("toggle", () => {
+  moreOpenFor = $("focus-more").open ? focusId : null;
+});
+
+/** Ticks a checklist item at once, then saves the whole list. */
+async function tickBlock(taskId, index, input) {
+  const blocks = focusBlocks.map((b, i) => (i === index ? { ...b, done: input.checked } : b));
+  focusBlocks = blocks;
+  try {
+    await api("/api/tasks/" + taskId, "PATCH", { blocks });
+  } catch (e) {
+    input.checked = !input.checked;
+    focusBlocks = focusBlocks.map((b, i) => (i === index ? { ...b, done: input.checked } : b));
+    $("status").textContent = "Couldn't save that. Try again.";
   }
 }
 

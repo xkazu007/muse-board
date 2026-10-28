@@ -42,6 +42,7 @@ that glance is enough to start.
 | `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
 | `group` | Optional short label, up to 40 characters: "Coursera ML", "Manara", "NutriSynth", "Personal". The app groups its list by it and can filter to one group; the widget ignores it. Set it when the task clearly belongs to a stream of work. |
+| `blocks` | What the task's page shows under the first step: an ordered list of text, headings, buttons, checklist items and toggles (see "Blocks" below). Up to 40. The app's detail page and the web's "More" show them; the widget ignores them. |
 | `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00
@@ -81,6 +82,44 @@ at my desk I open Coursera"), the best-supported technique in the research
   them as Casablanca time. Morocco has been on UTC+0 all year since
   2026-09-20, so `+01:00` is wrong.
 
+### Blocks: the task's page
+
+`blocks` lets you lay out a task's page: what to read, what to click, what to
+tick. Each block is an object with a `type`:
+
+| Type | Fields | Shows as |
+|---|---|---|
+| `heading` | `text` (≤ 80) | A bold line that starts a section |
+| `text` | `text` (≤ 2000) | A paragraph; links in it are tappable |
+| `button` | `label` (≤ 40), `url` (http/https) | A full-width button that opens the link |
+| `check` | `text` (≤ 200), `done` (true/false, default false) | A checklist item the owner ticks; the tick is saved |
+| `toggle` | `text` (≤ 120), `body` (≤ 2000) | A line that expands to show `body` when tapped |
+
+How to use them:
+
+- **The first step stays the main thing.** Blocks are for after it: the
+  next small moves, the links, the context. Don't repeat the first step.
+- **Checks are small steps**, each under 2 minutes, 3 to 7 of them. When
+  they're all ticked, the task is probably done or needs a new first step.
+- **Buttons are destinations**: "Open lesson 2", "Join Zoom", "Open the
+  brief". One per place, labels that start with a verb. The task's `url`
+  is still its main link; a button for the same place is redundant.
+- **Toggles hold what's useful but not needed to start**: why it matters,
+  background, a long how-to. Keeps the page short.
+- **Sending `blocks` replaces the whole list.** Read the task first and
+  keep the owner's ticks (`done`) on items you keep. `null` or `[]` clears.
+- Unknown types are skipped by the app, so new kinds can be added later
+  without breaking old installs.
+
+```json
+"blocks": [
+  { "type": "button", "label": "Open lesson 2", "url": "https://www.coursera.org/learn/machine-learning" },
+  { "type": "check", "text": "Watch the first 3 minutes" },
+  { "type": "check", "text": "Write one line about what regression is" },
+  { "type": "toggle", "text": "Why this one first", "body": "It is 7 minutes and unlocks the week 2 quiz." }
+]
+```
+
 ### Recipes
 
 ```bash
@@ -102,6 +141,13 @@ curl -s -H "$AUTH" -H 'Content-Type: application/json' -X POST $B/api/tasks -d '
 # Make it the focus, or fix a step or time
 curl -s -H "$AUTH" -H 'Content-Type: application/json' -X PATCH $B/api/tasks/12 \
   -d '{"position": 0, "first_step": "Open the doc and write one sentence"}'
+
+# Lay out its page (replaces any blocks it had)
+curl -s -H "$AUTH" -H 'Content-Type: application/json' -X PATCH $B/api/tasks/12 -d '{"blocks": [
+  {"type": "button", "label": "Open the brief", "url": "https://docs.example.com/brief"},
+  {"type": "check", "text": "Read the first page"},
+  {"type": "check", "text": "Write 3 questions"}
+]}'
 
 # Undo a Done the owner didn't mean
 curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen

@@ -106,10 +106,17 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   field), When (the phone's own date and time pickers) and Where. Adds to
   the end of the queue.
 - **Task detail page** (tap any task card): big editable title, first
-  step, notes (long ones folded to 4 lines with "See more"), then When /
+  step, Muse's blocks (below), notes (long ones folded to 4 lines with "See more"), then When /
   Where / Link / Group / Due rows (tap to pick, × to clear), a Links section
   for links found in the notes, Done (or Undo) and Later at the bottom. Everything
   saves on its own: "Saving…" / "Saved" at the top right.
+- **Blocks** (Muse writes them, `blocks` in the API): under the first
+  step on the detail page, and behind "More" on the web's focus card.
+  Heading (18sp bold), text (15sp, links in `accent`), button (52dp
+  tonal pill with a link icon, opens the link), check (native checkbox in
+  `accent`; ticked items fade to 55% and strike through; the whole row is
+  the 48dp target), toggle (chevron that turns 90°, body indented under
+  it). No filled yellow: Done stays the only primary action.
 - **Too big?** A small tonal chip on a task snoozed twice since its step
   last changed. Opens the detail page with the first step focused and "Try
   a first step that takes under 2 minutes." Neutral copy, never red.

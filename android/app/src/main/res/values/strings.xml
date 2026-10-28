@@ -120,6 +120,10 @@
     <string name="cal_next">Next</string>
     <string name="cal_nothing">Nothing planned.</string>
     <string name="detail_links">Links</string>
+    <string name="block_done">Done</string>
+    <string name="block_not_done">Not done</string>
+    <string name="block_expanded">Expanded</string>
+    <string name="block_collapsed">Collapsed</string>
     <string name="heading_today">Today</string>
     <string name="history_empty">Nothing done yet. It shows up here.</string>
     <string name="reopen">Reopen</string>
