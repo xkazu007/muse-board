@@ -2,14 +2,36 @@
 <resources>
     <string name="app_name">Muse Board</string>
     <string name="widget_name">Muse Board</string>
-    <string name="widget_name_caps">MUSE BOARD</string>
-    <string name="do_this_now">DO THIS NOW</string>
-    <string name="up_next">UP NEXT</string>
+    <string name="widget_desc">The one thing to do now, as a two-minute first step.</string>
+
+    <!-- Widget + app copy. Tone: neutral and short; no guilt. -->
+    <string name="do_this_now">NOW</string>
     <string name="done">✓ Done</string>
-    <string name="not_now">Not now →</string>
-    <string name="still_waiting">Still waiting on you — it\'s after 8pm.</string>
-    <string name="all_clear">All clear — nothing left today.</string>
-    <string name="done_today">Done today: %1$d</string>
+    <string name="done_label">Done</string>
+    <string name="later">Later</string>
+    <string name="all_clear">All clear.</string>
+    <string name="all_clear_detail">Nothing left today.</string>
+    <string name="done_today">%1$d done today</string>
+    <string name="done_count_short">%1$d done</string>
+    <string name="then">Then: %1$s</string>
+    <string name="done_feedback">✓ Done. %1$d today.</string>
+    <string name="later_feedback">Moved. Reminder at %1$s.</string>
+    <string name="save_failed">Couldn\'t save that. Try again.</string>
+    <string name="widget_loading">Loading your board…</string>
+    <string name="widget_tap_refresh">Tap to refresh.</string>
+
+    <!-- Later chooser -->
+    <string name="later_title">Come back to it…</string>
+    <string name="later_in_hour">In 1 hour</string>
+    <string name="later_tonight">Tonight 20:00</string>
+    <string name="later_tomorrow">Tomorrow 09:00</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Plan reminders -->
+    <string name="channel_plans">Plan reminders</string>
+    <string name="channel_plans_desc">One reminder at the time you planned a task.</string>
+
+    <!-- App -->
     <string name="token_title">Sign in</string>
     <string name="token_hint">Paste your board token once. It stays on this phone.</string>
     <string name="token_hint_input">Board token</string>
@@ -21,20 +43,17 @@
     <string name="change_token">Change token</string>
     <string name="board_unreachable">Couldn\'t reach the board. Check your connection.</string>
     <string name="action_failed">That didn\'t work. Try again.</string>
+    <string name="undo">Undo</string>
     <string name="widget_help">To add the widget: long-press your home screen → Widgets → Muse Board.</string>
-    <string name="widget_desc">Your Muse task list: the one thing to do now, what\'s next, and today\'s progress.</string>
     <string name="add_widget">Add widget to home screen</string>
     <string name="widget_pin_ok">Tap Add in the dialog to place the widget.</string>
-    <string name="widget_loading">Loading your board…</string>
-    <string name="widget_tap_refresh">Tap to refresh.</string>
     <string name="widget_pin_failed">Couldn\'t open the add-widget dialog. Long-press the home screen → Widgets → Muse Board instead.</string>
-    <string name="undo">Undo</string>
-    <!-- Sample content for the widget picker preview (widget_preview.xml) -->
-    <string name="preview_date">2026-10-28</string>
-    <string name="preview_focus_title">Watch the 7-min ML video</string>
-    <string name="preview_focus_detail">Coursera ML · Wed 28 Oct, 23:59</string>
-    <string name="preview_upcoming_1">• NutriSynth prep — Fri 30 Oct, 12:00</string>
-    <string name="preview_upcoming_2">• SA project — Sat 28 Nov, 23:59</string>
-    <string name="preview_done_count">Done today: 2</string>
     <string name="widget_pin_unsupported">Your launcher doesn\'t support adding widgets from the app. Long-press the home screen → Widgets → Muse Board instead.</string>
+
+    <!-- Sample content for the widget picker preview (widget_preview.xml) -->
+    <string name="preview_meta">Now · 21:00 · desk</string>
+    <string name="preview_count">1 done</string>
+    <string name="preview_step">Open Coursera and press play</string>
+    <string name="preview_task">Watch the 7-min ML video</string>
+    <string name="preview_then">Then: NutriSynth prep, Fri 12:00</string>
 </resources>

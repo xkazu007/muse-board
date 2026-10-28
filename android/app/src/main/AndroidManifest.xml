@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Plan reminders (Android 13+ asks the user once, from the app). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -20,6 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Widget "Later": a small dialog over the home screen -->
+        <activity
+            android:name=".LaterActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
 
         <!-- True home-screen widget -->
         <receiver
@@ -44,6 +55,11 @@
                 <action android:name="tech.mourid.museboard.ACTION_REFRESH" />
             </intent-filter>
         </receiver>
+
+        <!-- Plan reminder: one notification at a task's plan time -->
+        <receiver
+            android:name=".PlanReminderReceiver"
+            android:exported="false" />
 
         <!-- Board refresh: 30-minute alarm tick, explicit refresh, boot -->
         <receiver

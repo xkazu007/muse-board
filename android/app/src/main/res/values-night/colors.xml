@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget tokens, static dark fallback (Android 8 to 11). -->
+    <color name="mb_surface">#23314f</color>
+    <color name="mb_on_surface">#dae2ff</color>
+    <color name="mb_muted">#b0bfe3</color>
+    <color name="mb_primary">#b0c6ff</color>
+    <color name="mb_on_primary">#002d6e</color>
+    <color name="mb_inset">#1a2540</color>
+</resources>
