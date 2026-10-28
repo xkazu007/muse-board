@@ -49,6 +49,15 @@ class QuickAddSheet(
             }
         }
         saveButton.onTap { submit() }
+        // The keyboard's Done on the last field adds the task too.
+        link.setOnEditorActionListener { _, action, _ ->
+            if (action == android.view.inputmethod.EditorInfo.IME_ACTION_DONE && saveButton.isEnabled) {
+                submit()
+                true
+            } else {
+                false
+            }
+        }
         showEstimateChips()
         updateSaveEnabled()
     }
@@ -74,10 +83,12 @@ class QuickAddSheet(
                 text = formatMinutes(min)
                 gravity = Gravity.CENTER
                 textSize = 14f
-                setPadding((14 * density).toInt(), 0, (14 * density).toInt(), 0)
+                // Background first: an inset drawable brings its own padding,
+                // which would replace ours (the squashed chips of 2.9).
                 background = activity.getDrawable(
                     if (selected) R.drawable.mb_chip_selected_inset else R.drawable.mb_chip_tonal_inset,
                 )
+                setPadding((16 * density).toInt(), 0, (16 * density).toInt(), 0)
                 setTextColor(activity.getColor(if (selected) R.color.mb_on_primary else R.color.mb_on_surface))
                 pressable()
                 onTap {
@@ -85,7 +96,7 @@ class QuickAddSheet(
                     showEstimateChips()
                 }
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, (48 * density).toInt()).apply {
-                marginEnd = (4 * density).toInt()
+                marginEnd = (6 * density).toInt()
             })
         }
     }

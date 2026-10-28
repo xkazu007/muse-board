@@ -380,8 +380,10 @@ class MainActivity : Activity() {
                 text = name ?: getString(R.string.group_all)
                 gravity = Gravity.CENTER
                 textSize = 14f
-                setPadding(dp(16), 0, dp(16), 0)
+                // Background first: the inset drawable's own padding would
+                // otherwise replace ours.
                 background = getDrawable(if (selected) R.drawable.mb_chip_selected_inset else R.drawable.mb_chip_tonal_inset)
+                setPadding(dp(16), 0, dp(16), 0)
                 setTextColor(getColor(if (selected) R.color.mb_on_primary else R.color.mb_on_surface))
                 pressable()
                 onTap {
