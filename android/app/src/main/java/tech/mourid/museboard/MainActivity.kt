@@ -250,7 +250,9 @@ class MainActivity : Activity() {
         rendering = false
         focusRow.reset()
         if (focus != null) {
-            focusMetaView.text = focusMeta(focus)
+            focusMetaView.text = planLine(focus)
+            findViewById<TextView>(R.id.focus_due).showDueChip(focus)
+            findViewById<TextView>(R.id.focus_estimate).showEstimateChip(focus)
             focusStep.text = focus.firstStep ?: focus.title
             focusTask.text = if (focus.firstStep != null) focus.title else focus.detail.orEmpty()
             focusCheck.visibility = View.VISIBLE
@@ -261,6 +263,8 @@ class MainActivity : Activity() {
             focusRow.onSwipeLeft = { askLater(focus, focusRow) }
         } else {
             focusMetaView.text = ""
+            findViewById<View>(R.id.focus_due).visibility = View.GONE
+            findViewById<View>(R.id.focus_estimate).visibility = View.GONE
             focusStep.setText(R.string.all_clear)
             val comingBack = b.plans.firstOrNull()
             focusTask.text = if (comingBack != null) {
@@ -420,13 +424,13 @@ class MainActivity : Activity() {
                 text = detail
                 visibility = if (detail.isNullOrEmpty() || kind == Kind.DONE) View.GONE else View.VISIBLE
             }
-            row.findViewById<TextView>(R.id.task_when).text = when (kind) {
-                Kind.OPEN -> listOfNotNull(
-                    formatWhen(task.planAt ?: task.dueAt).ifEmpty { null },
-                    task.estimateMin?.let { "~" + formatMinutes(it) },
-                ).joinToString("\n")
+            row.findViewById<TextView>(R.id.task_when).showRowWhen(task, when (kind) {
+                Kind.OPEN -> formatWhen(task.planAt ?: task.dueAt)
                 Kind.LATER -> getString(R.string.back_at, formatWhen(task.snoozedUntil))
                 Kind.DONE -> ""
+            })
+            row.findViewById<TextView>(R.id.task_estimate).apply {
+                if (kind == Kind.DONE) visibility = View.GONE else showEstimateChip(task)
             }
             row.findViewById<View>(R.id.task_too_big).apply {
                 visibility = if (tooBig(task)) View.VISIBLE else View.GONE

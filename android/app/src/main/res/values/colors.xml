@@ -19,4 +19,24 @@
     <color name="mb_primary">#F5C542</color>
     <color name="mb_on_primary">#1F1800</color>
     <color name="mb_accent">#8A6200</color>
+
+    <!-- Chips (docs/design-system.md, "Urgency and size"). Deadline: warmer
+         as it nears, never red (overdue is deep orange). Estimate: a cool
+         scale, longer = further along it. fg = text, bg = chip fill. -->
+    <color name="mb_due_overdue">#B13D08</color>
+    <color name="mb_due_overdue_bg">#FDE4D5</color>
+    <color name="mb_due_today">#954F00</color>
+    <color name="mb_due_today_bg">#FDEBD3</color>
+    <color name="mb_due_tomorrow">#765900</color>
+    <color name="mb_due_tomorrow_bg">#FBF0C9</color>
+    <color name="mb_due_week">#3F3F46</color>
+    <color name="mb_due_week_bg">#EFEDE6</color>
+    <color name="mb_est_quick">#0F6E47</color>
+    <color name="mb_est_quick_bg">#D7F1E4</color>
+    <color name="mb_est_short">#0A5899</color>
+    <color name="mb_est_short_bg">#DBEAFA</color>
+    <color name="mb_est_long">#5638BF</color>
+    <color name="mb_est_long_bg">#E7E0FB</color>
+    <color name="mb_est_big">#A0215C</color>
+    <color name="mb_est_big_bg">#F9DCE9</color>
 </resources>

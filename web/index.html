@@ -43,7 +43,10 @@
   <section id="board" class="hidden">
     <article class="card focus">
       <div class="focus-main">
-        <p id="focus-meta" class="meta">Now</p>
+        <div class="meta-row">
+          <span id="focus-due" class="chip hidden"></span>
+          <span id="focus-meta" class="meta"></span>
+        </div>
         <h2 id="focus-step" class="step">…</h2>
         <p id="focus-task" class="muted"></p>
         <a id="focus-open" class="pill hidden" target="_blank" rel="noopener noreferrer">Open link ↗</a>
@@ -58,6 +61,8 @@
         </button>
         <button id="btn-later" class="pill" aria-haspopup="dialog">Later</button>
       </div>
+      <!-- Estimate, bottom right -->
+      <span id="focus-est" class="chip focus-est hidden"></span>
     </article>
 
     <h2 id="then-title" class="section-title">Then</h2>

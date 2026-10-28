@@ -218,10 +218,10 @@ class CalendarActivity : Activity() {
             visibility = if (detail == null) View.GONE else View.VISIBLE
         }
         val at = parseIso(task.planAt ?: task.dueAt)
-        row.findViewById<TextView>(R.id.task_when).text = listOfNotNull(
-            at?.let { clockTime(it) },
-            task.estimateMin?.let { "~" + formatMinutes(it) },
-        ).joinToString("\n")
+        row.findViewById<TextView>(R.id.task_when).showRowWhen(task, at?.let { clockTime(it) }.orEmpty())
+        row.findViewById<TextView>(R.id.task_estimate).apply {
+            if (done) visibility = View.GONE else showEstimateChip(task)
+        }
         row.findViewById<View>(R.id.task_row).onTap {
             startActivity(TaskActivity.intent(this, task))
         }

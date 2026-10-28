@@ -40,6 +40,15 @@
   --error: #B3261E;
   --radius: 28px;
   --radius-inner: 20px;
+  /* Chips: deadline (warm, never red) and estimate (cool scale). */
+  --due-overdue: #B13D08; --due-overdue-bg: #FDE4D5;
+  --due-today: #954F00; --due-today-bg: #FDEBD3;
+  --due-tomorrow: #765900; --due-tomorrow-bg: #FBF0C9;
+  --due-week: #3F3F46; --due-week-bg: #EFEDE6;
+  --est-quick: #0F6E47; --est-quick-bg: #D7F1E4;
+  --est-short: #0A5899; --est-short-bg: #DBEAFA;
+  --est-long: #5638BF; --est-long-bg: #E7E0FB;
+  --est-big: #A0215C; --est-big-bg: #F9DCE9;
 }
 /* Dark: follows the device ("auto", no data-theme), unless the toggle
    pinned light; or forced by the toggle (data-theme="dark"). */
@@ -58,6 +67,15 @@
     --secondary: #27272D;
     --on-secondary: #F4F4F5;
     --error: #FF8A80;
+    /* Chips: deadline (warm, never red) and estimate (cool scale). */
+    --due-overdue: #FF9A62; --due-overdue-bg: #3A2318;
+    --due-today: #FFB454; --due-today-bg: #3A2A16;
+    --due-tomorrow: #F5C542; --due-tomorrow-bg: #35301A;
+    --due-week: #D4D4D8; --due-week-bg: #2C2C33;
+    --est-quick: #6EE7A8; --est-quick-bg: #16302A;
+    --est-short: #7CC4FF; --est-short-bg: #172B3D;
+    --est-long: #B9A3FF; --est-long-bg: #2A2342;
+    --est-big: #FF8FC7; --est-big-bg: #3A1E2F;
   }
 }
 :root[data-theme="dark"] {
@@ -74,6 +92,15 @@
   --secondary: #27272D;
   --on-secondary: #F4F4F5;
   --error: #FF8A80;
+  /* Chips: deadline (warm, never red) and estimate (cool scale). */
+  --due-overdue: #FF9A62; --due-overdue-bg: #3A2318;
+  --due-today: #FFB454; --due-today-bg: #3A2A16;
+  --due-tomorrow: #F5C542; --due-tomorrow-bg: #35301A;
+  --due-week: #D4D4D8; --due-week-bg: #2C2C33;
+  --est-quick: #6EE7A8; --est-quick-bg: #16302A;
+  --est-short: #7CC4FF; --est-short-bg: #172B3D;
+  --est-long: #B9A3FF; --est-long-bg: #2A2342;
+  --est-big: #FF8FC7; --est-big-bg: #3A1E2F;
 }
 
 * { box-sizing: border-box; }
@@ -120,9 +147,27 @@ button:active:not(:disabled), .pill:active, .row:active, .block-btn:active, summ
 .card { background: var(--surface); border-radius: var(--radius); padding: 22px; }
 .card h2 { margin: 0 0 6px; font-size: 20px; }
 
-.focus { display: flex; gap: 16px; }
+.focus { display: grid; grid-template-columns: 1fr auto; column-gap: 16px; }
 .focus-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.meta { margin: 0; font-size: 14px; color: var(--muted); }
+.meta-row { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.meta { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Chips: the deadline, warmer as it nears (never red), and the estimate,
+   a cool scale (longer = further along). */
+.chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.focus-est { grid-column: 1 / -1; justify-self: end; margin-top: 8px; }
+.row .chip { padding: 3px 8px; font-size: 12px; }
+.due-overdue { color: var(--due-overdue); background: var(--due-overdue-bg); }
+.due-today { color: var(--due-today); background: var(--due-today-bg); }
+.due-tomorrow { color: var(--due-tomorrow); background: var(--due-tomorrow-bg); }
+.due-week { color: var(--due-week); background: var(--due-week-bg); }
+.est-quick { color: var(--est-quick); background: var(--est-quick-bg); }
+.est-short { color: var(--est-short); background: var(--est-short-bg); }
+.est-long { color: var(--est-long); background: var(--est-long-bg); }
+.est-big { color: var(--est-big); background: var(--est-big-bg); }
+.row-when.when-overdue { color: var(--due-overdue); }
+.row-when.when-today { color: var(--due-today); }
+.row-when.when-tomorrow { color: var(--due-tomorrow); }
 .step { margin: 2px 0 0; font-size: 27px; line-height: 1.22; font-weight: 700; letter-spacing: -0.4px; }
 .focus-main p { margin: 0; font-size: 15px; }
 .focus-actions { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -154,7 +199,8 @@ button:active:not(:disabled), .pill:active, .row:active, .block-btn:active, summ
 .row-main { flex: 1; min-width: 0; }
 .row-title { font-size: 16px; font-weight: 700; }
 .row-sub { margin-top: 2px; font-size: 14px; color: var(--muted); }
-.row-when { color: var(--muted); font-size: 14px; text-align: right; white-space: pre-line; }
+.row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.row-when { color: var(--muted); font-size: 14px; text-align: right; white-space: nowrap; }
 .row-link {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; min-height: 44px; margin: -10px -12px -10px 0; border-radius: 22px;

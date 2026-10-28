@@ -143,7 +143,7 @@
     <string name="widget_pin_unsupported">Your launcher doesn\'t support adding widgets from the app. Long-press the home screen → Widgets → Muse Board instead.</string>
 
     <!-- Sample content for the widget picker preview (widget_preview.xml) -->
-    <string name="preview_meta">Now · 21:00 · desk · ~15 min</string>
+    <string name="preview_meta">21:00 · desk</string>
     <string name="preview_count">1 done</string>
     <string name="preview_step">Open Coursera and press play</string>
     <string name="preview_task">Watch the 7-min ML video</string>

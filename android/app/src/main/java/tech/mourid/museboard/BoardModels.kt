@@ -186,17 +186,65 @@ fun formatDue(iso: String?): String {
     return casablanca("EEE d MMM, HH:mm").format(Date(t))
 }
 
-/** The focus line above the step: "Now · 21:00 · desk · ~15 min", else
- *  the deadline ("Now · by 23:59"). Sentence case, never caps. */
-fun focusMeta(task: BoardTask): String {
-    val parts = mutableListOf("Now")
-    when {
-        task.planAt != null -> parts.add(formatWhen(task.planAt))
-        task.dueAt != null -> parts.add("by " + formatWhen(task.dueAt))
+/** The plan above the step: "21:00 · desk" (no "Now", no deadline: the
+ *  deadline is its own coloured chip, see [Urgency]). "" without a plan. */
+fun planLine(task: BoardTask): String =
+    listOfNotNull(formatWhen(task.planAt).ifEmpty { null }, task.planWhere).joinToString(" · ")
+
+/**
+ * How close an open task's deadline is, for its coloured chip: warmer as it
+ * nears, never red (docs/design-system.md, "Urgency and size"). More than
+ * a week away, or no deadline: no chip.
+ */
+enum class Urgency(val color: Int, val chip: Int) {
+    OVERDUE(R.color.mb_due_overdue, R.drawable.mb_chip_due_overdue),
+    TODAY(R.color.mb_due_today, R.drawable.mb_chip_due_today),
+    TOMORROW(R.color.mb_due_tomorrow, R.drawable.mb_chip_due_tomorrow),
+    WEEK(R.color.mb_due_week, R.drawable.mb_chip_due_week);
+
+    companion object {
+        fun of(task: BoardTask, now: Long = System.currentTimeMillis()): Urgency? {
+            if (task.status != "open") return null
+            val due = parseIso(task.dueAt) ?: return null
+            if (due < now) return OVERDUE
+            return when (dayIndex(due) - dayIndex(now)) {
+                0L -> TODAY
+                1L -> TOMORROW
+                in 2L..6L -> WEEK
+                else -> null
+            }
+        }
     }
-    task.planWhere?.let { parts.add(it) }
-    task.estimateMin?.let { parts.add("~" + formatMinutes(it)) }
-    return parts.filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/** The deadline chip's text: "Due today 23:59", "Due tomorrow 00:59",
+ *  "Due Fri 12:00", "Was due 26 Oct". Neutral words, never "late". */
+fun dueLabel(task: BoardTask, now: Long = System.currentTimeMillis()): String {
+    val due = parseIso(task.dueAt) ?: return ""
+    val text = formatWhen(task.dueAt, now)
+    return when {
+        due < now -> "Was due $text"
+        dayIndex(due) == dayIndex(now) -> "Due today $text"
+        else -> "Due " + text.replaceFirst("Tomorrow", "tomorrow")
+    }
+}
+
+/** The estimate chip's colour: a cool scale, longer = further along it. */
+enum class TaskSize(val color: Int, val chip: Int) {
+    QUICK(R.color.mb_est_quick, R.drawable.mb_chip_est_quick),
+    SHORT(R.color.mb_est_short, R.drawable.mb_chip_est_short),
+    LONG(R.color.mb_est_long, R.drawable.mb_chip_est_long),
+    BIG(R.color.mb_est_big, R.drawable.mb_chip_est_big);
+
+    companion object {
+        /** Up to 15 min, 45, 90, longer. */
+        fun of(minutes: Int): TaskSize = when {
+            minutes <= 15 -> QUICK
+            minutes <= 45 -> SHORT
+            minutes <= 90 -> LONG
+            else -> BIG
+        }
+    }
 }
 
 /** 15 → "15 min", 60 → "1 h", 90 → "1 h 30". */

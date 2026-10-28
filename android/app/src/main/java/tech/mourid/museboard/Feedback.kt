@@ -5,6 +5,7 @@ import android.app.Activity
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.TextView
 
 /**
  * Touch feedback, One UI style: every tap answers at once with a light
@@ -56,4 +57,34 @@ fun Activity.addCardRow(card: LinearLayout, row: View) {
     }
     (row.layoutParams as? LinearLayout.LayoutParams)?.topMargin = 0
     card.addView(row)
+}
+
+/** Shows [task]'s deadline chip in [chip] (colour by how near it is), or
+ *  hides it when there's no deadline within a week. */
+fun TextView.showDueChip(task: BoardTask) {
+    val u = Urgency.of(task)
+    visibility = if (u == null) View.GONE else View.VISIBLE
+    if (u == null) return
+    text = dueLabel(task)
+    background = context.getDrawable(u.chip)
+    setTextColor(context.getColor(u.color))
+}
+
+/** Shows [task]'s estimate chip ("~15 min", cool colour by length), or
+ *  hides it when there's no estimate. */
+fun TextView.showEstimateChip(task: BoardTask) {
+    val min = task.estimateMin
+    visibility = if (min == null) View.GONE else View.VISIBLE
+    if (min == null) return
+    val size = TaskSize.of(min)
+    text = "~" + formatMinutes(min)
+    background = context.getDrawable(size.chip)
+    setTextColor(context.getColor(size.color))
+}
+
+/** A row's time: muted, or in the deadline's colour when it's near. */
+fun TextView.showRowWhen(task: BoardTask, text: String) {
+    this.text = text
+    val u = if (task.status == "open") Urgency.of(task) else null
+    setTextColor(context.getColor(if (u != null && u != Urgency.WEEK) u.color else R.color.mb_muted))
 }

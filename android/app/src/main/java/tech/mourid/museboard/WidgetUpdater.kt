@@ -57,6 +57,21 @@ object WidgetUpdater {
     )
     private val LATER_CHIPS = intArrayOf(R.id.mb_later_1, R.id.mb_later_2, R.id.mb_later_3)
 
+    /** One chip view per colour (a widget can't recolour a view safely on
+     *  every Android version), so the code shows the matching one. */
+    private val DUE_CHIPS = mapOf(
+        Urgency.OVERDUE to R.id.mb_due_overdue,
+        Urgency.TODAY to R.id.mb_due_today,
+        Urgency.TOMORROW to R.id.mb_due_tomorrow,
+        Urgency.WEEK to R.id.mb_due_week,
+    )
+    private val SIZE_CHIPS = mapOf(
+        TaskSize.QUICK to R.id.mb_est_quick,
+        TaskSize.SHORT to R.id.mb_est_short,
+        TaskSize.LONG to R.id.mb_est_long,
+        TaskSize.BIG to R.id.mb_est_big,
+    )
+
     /** Android 12+ uses layout-v31 where Done is a native CheckBox. */
     private val CHECKBOX = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     private val DONE_VIEW = if (CHECKBOX) R.id.mb_check else R.id.mb_btn_done
@@ -69,7 +84,7 @@ object WidgetUpdater {
         R.id.mb_open,
         R.id.mb_later_row,
         R.id.mb_upnext,
-    ) + UP_ROWS + LATER_CHIPS
+    ) + UP_ROWS + LATER_CHIPS + DUE_CHIPS.values + SIZE_CHIPS.values
 
     // --- Refresh scheduling --------------------------------------------------
 
@@ -263,7 +278,17 @@ object WidgetUpdater {
 
         val focus = board.focus
         if (focus != null) {
-            views.setTextViewText(R.id.mb_meta, focusMeta(focus))
+            views.setTextViewText(R.id.mb_meta, planLine(focus))
+            Urgency.of(focus)?.let { u ->
+                val id = DUE_CHIPS.getValue(u)
+                views.setViewVisibility(id, View.VISIBLE)
+                views.setTextViewText(id, dueLabel(focus))
+            }
+            focus.estimateMin?.let { min ->
+                val id = SIZE_CHIPS.getValue(TaskSize.of(min))
+                views.setViewVisibility(id, View.VISIBLE)
+                views.setTextViewText(id, "~" + formatMinutes(min))
+            }
             views.setTextViewText(R.id.mb_step, focus.firstStep ?: focus.title)
             views.setTextViewText(
                 R.id.mb_task,

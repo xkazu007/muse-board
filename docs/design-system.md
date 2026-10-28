@@ -31,6 +31,43 @@ unreadable: in light mode the accent becomes a deep amber.
 Every text pair passes WCAG AA (4.5:1); the lowest is `accent` on `inset`,
 light, at 4.68:1. Check any new pair before using it.
 
+## Urgency and size
+
+Two small chips give a task its feel at a glance. Both are a tinted fill
+with bold text in the same hue (`mb_due_*` / `mb_est_*` tokens, `--due-*` /
+`--est-*` on the web); every pair passes 4.5:1.
+
+**Deadline** (from `due_at`, open tasks only): warmer as it nears, **never
+red**. Shame predicts more procrastination, so an overdue task gets the
+deepest orange and neutral words, not an alarm.
+
+| When | Chip | Dark | Light |
+|---|---|---|---|
+| Passed | "Was due 16:00" | `#FF9A62` on `#3A2318` | `#B13D08` on `#FDE4D5` |
+| Today | "Due today 23:59" | `#FFB454` on `#3A2A16` | `#954F00` on `#FDEBD3` |
+| Tomorrow | "Due tomorrow 00:59" | `#F5C542` on `#35301A` | `#765900` on `#FBF0C9` |
+| In 2 to 6 days | "Due Fri 12:00" | `#D4D4D8` on `#2C2C33` | `#3F3F46` on `#EFEDE6` |
+| A week or more, or none | no chip | | |
+
+**Estimate** (`estimate_min`): a cool scale, so it never competes with the
+warm deadline; longer moves along it. Shown as "~15 min".
+
+| Length | Dark | Light |
+|---|---|---|
+| Up to 15 min (quick win) | green `#6EE7A8` on `#16302A` | `#0F6E47` on `#D7F1E4` |
+| Up to 45 min | blue `#7CC4FF` on `#172B3D` | `#0A5899` on `#DBEAFA` |
+| Up to 90 min | violet `#B9A3FF` on `#2A2342` | `#5638BF` on `#E7E0FB` |
+| Longer | pink `#FF8FC7` on `#3A1E2F` | `#A0215C` on `#F9DCE9` |
+
+Where: on the focus card (app, web) the deadline chip leads the top line,
+then the plan as plain text ("21:00 · desk"; no "Now"), and the estimate
+chip sits in the **bottom-right corner**. On the widget the deadline chip
+leads the top line and the estimate chip ends the task-title line (one
+view per colour, since a widget can't safely recolour a view on every
+Android version). In lists the time on the right takes the deadline's
+colour (today, tomorrow, passed) with the estimate chip under it. The
+detail page colours its Due and Takes values the same way.
+
 ## Type
 
 **Plus Jakarta Sans** (SIL OFL 1.1), bundled in the app and widget
@@ -44,7 +81,8 @@ and on each widget TextView.
 | The step (focus) | 27sp app / 27px web, 21sp widget | Bold |
 | Section title ("Then", "Notes") | 18sp | Bold |
 | Row title | 16sp | Bold |
-| Body, row detail, meta line ("Now · 21:00 · desk · ~15 min") | 14 to 15sp, 13sp on the widget | Regular, `muted` for meta |
+| Body, row detail, plan line ("21:00 · desk") | 14 to 15sp, 13sp on the widget | Regular, `muted` for the plan |
+| Chips (deadline, estimate) | 13sp app / web, 12sp widget and rows | Bold, in the chip's hue |
 
 **No eyebrows**: no small uppercase labels with letter spacing anywhere
 (app, widget, web). Sections get sentence-case bold titles; a group or day
@@ -68,7 +106,7 @@ name above its card is 14sp bold `muted`.
 
 ## Components
 
-- **Focus block**: meta line (`Now · <plan time or "by" deadline> · <where> · ~<estimate>`)
+- **Focus block**: top line = deadline chip + plan (`<plan time> · <where>`), estimate chip bottom right
   + done count on the right, the step (max 2 lines, so a 4×2 never clips), the task title (1
   line), the Then line (1 line).
 - **Done**: 60dp circle (64px web), `primary`. On Android 12+ (widget) and
@@ -124,8 +162,8 @@ name above its card is 14sp bold `muted`.
   title, first step (both required, the 2-minute rule written under the
   field), When (the phone's own date and time pickers) and Where. Adds to
   the end of the queue.
-- **Estimate** (`estimate_min`): "~15 min" after the time on the focus line
-  (widget, app, web) and under the time on rows. Set from the detail page's
+- **Estimate** (`estimate_min`): a coloured "~15 min" chip (see "Urgency
+  and size"), bottom right of the focus card, under the time on rows. Set from the detail page's
   "Takes" row (5 min to 2 h in the bottom sheet) or quick-add's chips
   (5 / 15 / 30 min / 1 h).
 - **Task detail page** (tap any task card): big editable title, first

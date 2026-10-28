@@ -38,12 +38,12 @@ that glance is enough to start.
 | `first_step` | **Always set it.** The first physical action, doable in under 2 minutes, starting with a verb. "Open Coursera and press play". Max 140 characters, aim for under 40. No prerequisites hidden inside ("research X first" is a task, not a step). |
 | `plan_at` | **When** they will start. Set it for every task meant for today or tomorrow. The phone sends one reminder at this time. Local Casablanca time, no offset: `"2026-10-29T21:00"`. |
 | `plan_where` | **Where**, 1 to 3 words: "desk", "library", "bed". Max 40 characters. |
-| `due_at` | The real deadline, if there is one. Shown only when there is no plan. Same time format. |
+| `due_at` | The real deadline, if there is one. Same time format. Shows as a coloured chip once it's under a week away: neutral, then yellow (tomorrow), orange (today), deep orange once passed ("Was due…", never red). Only set real deadlines, or every task looks urgent. |
 | `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
 | `group` | Optional short label, up to 40 characters: "Coursera ML", "Manara", "NutriSynth", "Personal". The app groups its list by it and can filter to one group; the widget ignores it. Set it when the task clearly belongs to a stream of work. |
 | `blocks` | What the task's page shows under the first step: an ordered list of text, headings, buttons, checklist items and toggles (see "Blocks" below). Up to 40. The app's detail page and the web's "More" show them; the widget ignores them. |
-| `estimate_min` | How long the **whole task** realistically takes, in minutes (1 to 1440). Shown as "~15 min" next to the time on the widget, the app and the web. Set it when you can judge it; be honest rather than small, a true "~45 min" is easier to plan for than a hopeful "~10 min". `null` clears it. |
+| `estimate_min` | How long the **whole task** realistically takes, in minutes (1 to 1440). Shown as a "~15 min" chip whose colour moves from green (quick, up to 15) through blue and violet to pink (over 90) on the widget, the app and the web. Set it when you can judge it; be honest rather than small, a true "~45 min" is easier to plan for than a hopeful "~10 min". `null` clears it. |
 | `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00

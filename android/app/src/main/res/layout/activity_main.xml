@@ -160,108 +160,142 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/mb_card_bg"
-                    android:gravity="center_vertical"
                     android:longClickable="true"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:padding="22dp"
                     android:stateListAnimator="@animator/mb_press">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                        <TextView
-                            android:id="@+id/focus_meta"
-                            android:layout_width="match_parent"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/mb_muted"
-                            android:textSize="14sp" />
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/focus_step"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:lineSpacingExtra="2dp"
-                            android:textColor="@color/mb_on_surface"
-                            android:textSize="27sp"
-                            android:textStyle="bold" />
+                            <!-- Deadline chip (coloured by how near it is), then the
+                                 plan as plain text: "21:00 · desk" -->
+                            <LinearLayout
+                                android:id="@+id/focus_meta_row"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
-                        <TextView
-                            android:id="@+id/focus_task"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:textColor="@color/mb_muted"
-                            android:textSize="14sp" />
+                                <TextView
+                                    android:id="@+id/focus_due"
+                                    style="@style/MuseBoard.Chip"
+                                    android:layout_marginEnd="8dp"
+                                    android:visibility="gone" />
 
-                        <!-- "Too big?" (issue #7): after two snoozes -->
-                        <TextView
-                            android:id="@+id/focus_too_big"
+                                <TextView
+                                    android:id="@+id/focus_meta"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:ellipsize="end"
+                                    android:maxLines="1"
+                                    android:textColor="@color/mb_muted"
+                                    android:textSize="14sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/focus_step"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:lineSpacingExtra="2dp"
+                                android:textColor="@color/mb_on_surface"
+                                android:textSize="27sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/focus_task"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:textColor="@color/mb_muted"
+                                android:textSize="14sp" />
+
+                            <!-- "Too big?" (issue #7): after two snoozes -->
+                            <TextView
+                                android:id="@+id/focus_too_big"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:layout_marginTop="2dp"
+                                android:background="@drawable/mb_chip_tonal_inset"
+                                android:gravity="center"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="@string/too_big"
+                                android:textColor="@color/mb_on_surface"
+                                android:textSize="13sp"
+                                android:visibility="gone"
+                                android:stateListAnimator="@animator/mb_press" />
+                            <!-- Go-to link (issue #12) -->
+                            <TextView
+                                android:id="@+id/focus_open"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:layout_marginTop="2dp"
+                                android:background="@drawable/mb_chip_tonal_inset"
+                                android:gravity="center"
+                                android:paddingStart="14dp"
+                                android:paddingEnd="14dp"
+                                android:text="@string/open_link"
+                                android:textColor="@color/mb_on_surface"
+                                android:textSize="13sp"
+                                android:visibility="gone"
+                                android:stateListAnimator="@animator/mb_press" />
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="2dp"
-                            android:background="@drawable/mb_chip_tonal_inset"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:text="@string/too_big"
-                            android:textColor="@color/mb_on_surface"
-                            android:textSize="13sp"
-                            android:visibility="gone"
-                            android:stateListAnimator="@animator/mb_press" />
-                        <!-- Go-to link (issue #12) -->
-                        <TextView
-                            android:id="@+id/focus_open"
-                            android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="2dp"
-                            android:background="@drawable/mb_chip_tonal_inset"
-                            android:gravity="center"
-                            android:paddingStart="14dp"
-                            android:paddingEnd="14dp"
-                            android:text="@string/open_link"
-                            android:textColor="@color/mb_on_surface"
-                            android:textSize="13sp"
-                            android:visibility="gone"
-                            android:stateListAnimator="@animator/mb_press" />
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical">
+
+                            <CheckBox
+                                android:id="@+id/focus_check"
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
+                                android:background="@null"
+                                android:button="@drawable/mb_check_button"
+                                android:contentDescription="@string/done_label"
+                                android:gravity="center"
+                                android:paddingStart="2dp"
+                                android:paddingTop="2dp" />
+
+                            <TextView
+                                android:id="@+id/focus_later"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:layout_marginTop="4dp"
+                                android:background="@drawable/mb_pill_tonal_inset"
+                                android:gravity="center"
+                                android:minWidth="64dp"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:text="@string/later"
+                                android:textColor="@color/mb_on_surface"
+                                android:textSize="14sp"
+                                android:stateListAnimator="@animator/mb_press" />
+                        </LinearLayout>
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:gravity="center_horizontal"
-                        android:orientation="vertical">
-
-                        <CheckBox
-                            android:id="@+id/focus_check"
-                            android:layout_width="64dp"
-                            android:layout_height="64dp"
-                            android:background="@null"
-                            android:button="@drawable/mb_check_button"
-                            android:contentDescription="@string/done_label"
-                            android:gravity="center"
-                            android:paddingStart="2dp"
-                            android:paddingTop="2dp" />
-
-                        <TextView
-                            android:id="@+id/focus_later"
-                            android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="4dp"
-                            android:background="@drawable/mb_pill_tonal_inset"
-                            android:gravity="center"
-                            android:minWidth="64dp"
-                            android:paddingStart="16dp"
-                            android:paddingEnd="16dp"
-                            android:text="@string/later"
-                            android:textColor="@color/mb_on_surface"
-                            android:textSize="14sp"
-                            android:stateListAnimator="@animator/mb_press" />
-                    </LinearLayout>
+                    <!-- Estimate, bottom right: cool colours, longer = further
+                         along the scale -->
+                    <TextView
+                        android:id="@+id/focus_estimate"
+                        style="@style/MuseBoard.Chip"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone" />
                 </LinearLayout>
             </tech.mourid.museboard.SwipeRow>
 

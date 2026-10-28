@@ -112,4 +112,18 @@
         <item name="android:alpha">0.6</item>
         <item name="android:visibility">gone</item>
     </style>
+
+    <!-- A small coloured chip: deadline ("Due today 23:59") or estimate
+         ("~15 min"). Background and text colour come per kind. -->
+    <style name="MuseBoard.Chip" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>

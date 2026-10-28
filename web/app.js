@@ -86,15 +86,45 @@ function safeUrl(url) {
   return typeof url === "string" && /^https?:\/\//i.test(url);
 }
 
-/** The focus card's top line: "Now · 21:00 · desk · ~15 min", else the
- *  deadline. Sentence case, never caps. */
-function focusMeta(t) {
-  const parts = ["Now"];
-  if (t.plan_at) parts.push(fmtWhen(t.plan_at));
-  else if (t.due_at) parts.push("by " + fmtWhen(t.due_at));
-  if (t.plan_where) parts.push(t.plan_where);
-  if (t.estimate_min) parts.push("~" + fmtMinutes(t.estimate_min));
-  return parts.join(" · ");
+/** The plan above the step: "21:00 · desk". The deadline has its own
+ *  coloured chip; no "Now". */
+function planLine(t) {
+  return [fmtWhen(t.plan_at), t.plan_where].filter(Boolean).join(" · ");
+}
+
+/** How near an open task's deadline is: "overdue", "today", "tomorrow",
+ *  "week" (2 to 6 days), or null (none, or further). Warm colours, never
+ *  red (docs/design-system.md, "Urgency and size"). */
+function urgency(t) {
+  if (t.status !== "open" || !t.due_at) return null;
+  const due = new Date(t.due_at);
+  if (due.getTime() < Date.now()) return "overdue";
+  const days = (Date.parse(dayKey(due)) - Date.parse(dayKey(new Date()))) / 86400000;
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days < 7) return "week";
+  return null;
+}
+
+/** "Due today 23:59", "Due tomorrow 00:59", "Due Fri 12:00", "Was due 26 Oct". */
+function dueLabel(t) {
+  const u = urgency(t);
+  const text = fmtWhen(t.due_at);
+  if (u === "overdue") return "Was due " + text;
+  if (u === "today") return "Due today " + text;
+  return "Due " + text.replace(/^Tomorrow/, "tomorrow");
+}
+
+/** The estimate's colour step: up to 15 min, 45, 90, longer. */
+function sizeOf(min) {
+  return min <= 15 ? "quick" : min <= 45 ? "short" : min <= 90 ? "long" : "big";
+}
+
+/** Fills a chip element, or hides it when [cls] is null. */
+function setChip(el, cls, text, extra) {
+  el.className = ["chip", extra, cls].filter(Boolean).join(" ");
+  el.textContent = text || "";
+  el.classList.toggle("hidden", !cls);
 }
 
 /** "Later" choices, as offset-less Casablanca times the API reads as local. */
@@ -198,12 +228,21 @@ function taskRow(t) {
     main.append(sub);
   }
   row.append(main);
+  // Right: the time (in the deadline's colour when it's near) and the
+  // estimate chip under it.
+  const side = document.createElement("div");
+  side.className = "row-side";
   const when = document.createElement("span");
-  when.className = "row-when";
-  when.textContent = [fmtWhen(t.plan_at || t.due_at), t.estimate_min ? "~" + fmtMinutes(t.estimate_min) : ""]
-    .filter(Boolean)
-    .join("\n");
-  row.append(when);
+  const u = urgency(t);
+  when.className = "row-when" + (u && u !== "week" ? " when-" + u : "");
+  when.textContent = fmtWhen(t.plan_at || t.due_at);
+  side.append(when);
+  if (t.estimate_min) {
+    const est = document.createElement("span");
+    setChip(est, "est-" + sizeOf(t.estimate_min), "~" + fmtMinutes(t.estimate_min));
+    side.append(est);
+  }
+  row.append(side);
   if (safeUrl(t.url)) {
     const go = document.createElement("a");
     go.className = "row-link";
@@ -228,12 +267,20 @@ async function loadBoard() {
     const f = b.focus;
     focusId = f ? f.id : null;
     focusTitle = f ? f.first_step || f.title : "";
+    const u = f && urgency(f);
+    setChip($("focus-due"), u && "due-" + u, u && dueLabel(f));
+    setChip(
+      $("focus-est"),
+      f && f.estimate_min ? "est-" + sizeOf(f.estimate_min) : null,
+      f && f.estimate_min ? "~" + fmtMinutes(f.estimate_min) : "",
+      "focus-est",
+    );
     if (f) {
-      $("focus-meta").textContent = focusMeta(f);
+      $("focus-meta").textContent = planLine(f);
       $("focus-step").textContent = f.first_step || f.title;
       $("focus-task").textContent = f.first_step ? f.title : f.detail || "";
     } else {
-      $("focus-meta").textContent = "Now";
+      $("focus-meta").textContent = "";
       $("focus-step").textContent = "All clear. Nothing left today.";
       $("focus-task").textContent = "";
     }

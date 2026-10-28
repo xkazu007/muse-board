@@ -213,6 +213,8 @@ class TaskActivity : Activity() {
         filling = false
         showTime(whenValue, whenClear, t.planAt)
         showTime(dueValue, dueClear, t.dueAt)
+        // The deadline in its urgency colour (warmer as it nears, never red).
+        dueValue.setTextColor(getColor(Urgency.of(t)?.color ?: R.color.mb_on_surface))
         showEstimate(t.estimateMin)
         showLinks(t.detail.orEmpty())
         blocks.show(t.blocks)
@@ -240,6 +242,7 @@ class TaskActivity : Activity() {
     private fun showEstimate(min: Int?) {
         estimateValue.text = min?.let { formatMinutes(it) } ?: getString(R.string.detail_none)
         estimateValue.alpha = if (min == null) 0.6f else 1f
+        estimateValue.setTextColor(getColor(min?.let { TaskSize.of(it).color } ?: R.color.mb_on_surface))
         estimateClear.visibility = if (min == null) View.GONE else View.VISIBLE
     }
 
