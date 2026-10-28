@@ -58,11 +58,19 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   which fills and draws its check when tapped (animated-selector,
   `drawable/mb_check_button.xml`). Before 12 the widget shows the filled
   circle. The only filled element.
-- **Later**: plain text button, `muted`, 44dp tall. It never opens a popup:
+- **Later**: a tonal pill (40dp, `inset` fill, `on-surface` text), in the
+  widget and the app. In the widget it never opens a popup:
   the widget itself swaps Done for three 44dp chips on `inset` (In 1 hour /
   Tonight / Tomorrow; Tonight only before 19:00) and Later becomes Back. The
   time is worked out when a chip is tapped. Tonight = 20:00, Tomorrow =
-  09:00. The app shows the same choices in a dialog.
+  09:00. The app shows the same choices in the bottom sheet.
+- **Bottom sheet** (app: long-press menu and Later): `surface`, 28dp top
+  corners, a drag handle, the step as title and the task under it, 56dp
+  rows with a 24dp line icon and the time on the right ("20:00"). Slides up
+  from the bottom.
+- **Press feedback**: every tappable thing gets a contained ripple
+  (`on-surface` at 12%) clipped to its own shape. Never the borderless
+  ripple: it spills past small targets as a loose circle.
 - **Then list** (widget at about 260dp tall and up, usually 4 rows, and on the web): up to 3
   rows, title left, short time right, on `inset`.
 - **Feedback line**: replaces the Then line for 60 s after an action: "✓

@@ -137,13 +137,15 @@
             <TextView
                 android:id="@+id/mb_btn_later"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/mb_pill_tonal"
                 android:gravity="center"
                 android:minWidth="60dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="@string/later"
-                android:textColor="@color/mb_muted"
+                android:textColor="@color/mb_on_surface"
                 android:textSize="14sp"
                 android:visibility="gone" />
         </LinearLayout>
