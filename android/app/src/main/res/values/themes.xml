@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MuseBoard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/widget_bg</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:colorPrimary">@color/accent</item>
+        <item name="android:colorPrimaryDark">@color/widget_bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+    </style>
+</resources>

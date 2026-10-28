@@ -1,0 +1,1 @@
+{"dependencies":{"express":"^4.21.2","pg":"^8.13.1"},"description":"Muse Board API — one focus task + upcoming tasks for Zakaria's Android widget","engines":{"node":">=20"},"main":"server.js","name":"muse-board-api","private":true,"scripts":{"start":"node server.js"},"version":"1.0.0"}

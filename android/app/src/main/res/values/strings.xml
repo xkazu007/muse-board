@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Muse Board</string>
+    <string name="widget_name">Muse Board</string>
+    <string name="widget_name_caps">MUSE BOARD</string>
+    <string name="do_this_now">DO THIS NOW</string>
+    <string name="up_next">UP NEXT</string>
+    <string name="done">✓ Done</string>
+    <string name="not_now">Not now →</string>
+    <string name="still_waiting">Still waiting on you — it\'s after 8pm.</string>
+    <string name="all_clear">All clear — nothing left today.</string>
+    <string name="done_today">Done today: %1$d</string>
+    <string name="token_title">Sign in</string>
+    <string name="token_hint">Paste your board token once. It stays on this phone.</string>
+    <string name="token_hint_input">Board token</string>
+    <string name="token_empty">Paste your board token first.</string>
+    <string name="token_invalid">That token didn\'t work. Try again.</string>
+    <string name="save">Save</string>
+    <string name="refresh">Refresh</string>
+    <string name="all_tasks">ALL TASKS</string>
+    <string name="change_token">Change token</string>
+    <string name="board_unreachable">Couldn\'t reach the board. Check your connection.</string>
+    <string name="action_failed">That didn\'t work. Try again.</string>
+    <string name="widget_help">To add the widget: long-press your home screen → Widgets → Muse Board.</string>
+</resources>

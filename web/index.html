@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<title>Muse Board</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Muse Board</h1>
+    <p id="date" class="muted"></p>
+  </header>
+
+  <section id="token-box" class="card hidden">
+    <h2>Sign in</h2>
+    <p class="muted">Paste your board token once. It stays on this phone.</p>
+    <input id="token-input" type="password" placeholder="Board token" autocomplete="off">
+    <button id="token-save" class="btn primary">Save</button>
+    <p id="token-error" class="error hidden">That token didn't work. Try again.</p>
+  </section>
+
+  <section id="board" class="hidden">
+    <div class="card focus-card">
+      <p class="label">Do this now</p>
+      <h2 id="focus-title">—</h2>
+      <p id="focus-detail" class="muted"></p>
+      <p id="waiting" class="waiting hidden">Still waiting on you — it's after 8pm.</p>
+      <div class="row">
+        <button id="btn-done" class="btn done">✓ Done</button>
+        <button id="btn-snooze" class="btn ghost">Not now →</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="label">Up next</p>
+      <ul id="upcoming"></ul>
+    </div>
+
+    <p class="footer"><span id="done-count">Done today: 0</span> · <button id="btn-refresh" class="link">Refresh</button> · <button id="btn-logout" class="link">Change token</button></p>
+  </section>
+
+  <p id="status" class="muted small"></p>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
