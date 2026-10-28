@@ -11,7 +11,10 @@
  *                                       plans[], doneToday }
  *   GET   /api/tasks               -> full task list (ordered by position)
  *   POST  /api/tasks               -> create (fields below; title required)
+ *   GET   /api/tasks/:id           -> one task
  *   PATCH /api/tasks/:id           -> edit any of the fields below
+ *   POST  /api/tasks/:id           -> same as PATCH (for clients without
+ *                                     PATCH, e.g. Android's HttpURLConnection)
  *   POST  /api/tasks/:id/complete  -> mark done
  *   POST  /api/tasks/:id/reopen    -> undo a "done"
  *   POST  /api/tasks/:id/snooze    -> "Later": { until? } hides the task
@@ -19,9 +22,11 @@
  *                                     no `until` = until tomorrow 09:00
  *   GET   /health                  -> { ok: true } (no auth)
  *
- * Task fields: title, detail, first_step (the 2-minute starter the widget
- * shows big), due_at, plan_at + plan_where (the "when · where" plan; the
- * phone reminds at plan_at), position (lower = sooner in the queue).
+ * Task fields: title, detail (notes, up to 4000 chars), first_step (the
+ * 2-minute starter the widget shows big), due_at, plan_at + plan_where (the
+ * "when · where" plan; the phone reminds at plan_at), position (lower =
+ * sooner in the queue). Read-only: snooze_count (Laters since first_step
+ * last changed; the app offers "Too big?" at 2).
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
  *
@@ -77,6 +82,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS first_step TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_at TIMESTAMPTZ;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_where TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snooze_count INT NOT NULL DEFAULT 0;
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -116,7 +122,7 @@ const SEED = [
 ];
 
 const TASK_COLUMNS =
-  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until";
+  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count";
 
 async function initDb() {
   await pool.query(SCHEMA);
@@ -170,6 +176,9 @@ function publicTask(r) {
     status: r.status,
     completed_at: iso(r.completed_at),
     snoozed_until: iso(r.snoozed_until),
+    // Times "Later" was used since the first step last changed. Two or
+    // more: the app offers "Too big? Make it smaller".
+    snooze_count: r.snooze_count,
   };
 }
 
@@ -201,7 +210,7 @@ const BAD_DATETIME_CODES = new Set(["22007", "22008"]);
  *  readable (first_step is shown in large text, plan_where after the time). */
 const FIELDS = {
   title: { kind: "text", max: 200, required: true },
-  detail: { kind: "text", max: 500 },
+  detail: { kind: "text", max: 4000 },
   first_step: { kind: "text", max: 140 },
   plan_where: { kind: "text", max: 40 },
   due_at: { kind: "time" },
@@ -345,7 +354,7 @@ app.post("/api/tasks", requireAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
+async function updateTask(req, res) {
   const id = parseId(req, res);
   if (id === null) return;
   const body = req.body || {};
@@ -361,6 +370,8 @@ app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
   if (sets.length === 0) {
     return res.status(400).json({ error: "nothing to update" });
   }
+  // A rewritten first step is a fresh start: "Too big?" goes away.
+  if (body.first_step !== undefined) sets.push("snooze_count = 0");
   try {
     const { rows } = await pool.query(
       `UPDATE tasks SET ${sets.join(", ")} WHERE id = $1 RETURNING ${TASK_COLUMNS}`,
@@ -370,10 +381,26 @@ app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     res.json({ task: publicTask(rows[0]) });
   } catch (err) {
     if (badTime(err, res)) return;
-    console.error("PATCH /api/tasks/:id failed:", err);
+    console.error(`${req.method} /api/tasks/:id failed:`, err);
+    res.status(500).json({ error: "internal error" });
+  }
+}
+
+app.get("/api/tasks/:id", requireAuth, async (req, res) => {
+  const id = parseId(req, res);
+  if (id === null) return;
+  try {
+    const { rows } = await pool.query(`SELECT ${TASK_COLUMNS} FROM tasks WHERE id = $1`, [id]);
+    if (rows.length === 0) return res.status(404).json({ error: "task not found" });
+    res.json({ task: publicTask(rows[0]) });
+  } catch (err) {
+    console.error("GET /api/tasks/:id failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
+
+app.patch("/api/tasks/:id", requireAuth, updateTask);
+app.post("/api/tasks/:id", requireAuth, updateTask);
 
 /** Runs a status change that only applies in `fromStatus`; 404 otherwise. */
 async function changeStatus(req, res, setSql, fromStatus, label) {
@@ -426,7 +453,8 @@ app.post("/api/tasks/:id/snooze", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "until must be in the future and at most 14 days away" });
       }
       ({ rows } = await pool.query(
-        `UPDATE tasks SET snoozed_at = now(), snoozed_until = $2::timestamptz, plan_at = $2::timestamptz
+        `UPDATE tasks SET snoozed_at = now(), snoozed_until = $2::timestamptz, plan_at = $2::timestamptz,
+                          snooze_count = snooze_count + 1
          WHERE id = $1 AND status = 'open'
          RETURNING ${TASK_COLUMNS}`,
         [id, until],
@@ -435,6 +463,7 @@ app.post("/api/tasks/:id/snooze", requireAuth, async (req, res) => {
       ({ rows } = await pool.query(
         `UPDATE tasks
          SET snoozed_at = now(),
+             snooze_count = snooze_count + 1,
              snoozed_until = ((now() AT TIME ZONE $2)::date + 1 + time '09:00') AT TIME ZONE $2
          WHERE id = $1 AND status = 'open'
          RETURNING ${TASK_COLUMNS}`,

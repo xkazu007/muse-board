@@ -224,6 +224,35 @@ $("btn-logout").addEventListener("click", () => {
   showBoard(false);
 });
 
+// --- Theme (issue #9): auto → light → dark, remembered on this device --------
+
+const THEME_KEY = "muse-board-theme";
+const THEMES = ["auto", "light", "dark"];
+
+function currentTheme() {
+  const t = document.documentElement.dataset.theme;
+  return t === "light" || t === "dark" ? t : "auto";
+}
+
+function showTheme(mode) {
+  const button = $("theme-toggle");
+  button.dataset.mode = mode;
+  button.setAttribute("aria-label", "Theme: " + mode);
+  button.title = "Theme: " + mode;
+}
+
+$("theme-toggle").addEventListener("click", () => {
+  const next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
+  if (next === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = next;
+  try {
+    if (next === "auto") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, next);
+  } catch (_) {}
+  showTheme(next);
+});
+showTheme(currentTheme());
+
 if (token) {
   loadBoard();
 } else {

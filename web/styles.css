@@ -3,7 +3,7 @@
    Android 12+ the widget uses the wallpaper's colors instead. See
    docs/design-system.md. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --page: #f9f9ff;
   --surface: #dae2ff;
   --on-surface: #001a41;
@@ -17,8 +17,11 @@
   --radius: 28px;
   --radius-inner: 20px;
 }
+/* Dark: follows the device ("auto", no data-theme), unless the toggle
+   pinned light; or forced by the toggle (data-theme="dark"). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --page: #111318;
     --surface: #23314f;
     --on-surface: #dae2ff;
@@ -31,6 +34,19 @@
     --error: #ffb4ab;
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #111318;
+  --surface: #23314f;
+  --on-surface: #dae2ff;
+  --muted: #b0bfe3;
+  --primary: #b0c6ff;
+  --on-primary: #002d6e;
+  --secondary: #34466b;
+  --on-secondary: #dae2ff;
+  --inset: #1a2540;
+  --error: #ffb4ab;
+}
 
 * { box-sizing: border-box; }
 body {
@@ -39,7 +55,18 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 40px; }
-.top { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+.top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.top-right { display: flex; align-items: center; gap: 4px; }
+.theme-toggle {
+  width: 44px; height: 44px; border: 0; border-radius: 22px; cursor: pointer;
+  background: transparent; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.theme-toggle:hover { background: var(--inset); }
+.theme-toggle svg { display: none; }
+.theme-toggle[data-mode="auto"] .i-auto,
+.theme-toggle[data-mode="light"] .i-light,
+.theme-toggle[data-mode="dark"] .i-dark { display: block; }
 .brand { font-weight: 600; color: var(--primary); }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="@color/mb_primary" />
-    <corners android:radius="24dp" />
-</shape>
+<!-- Primary button: primary fill, contained ripple. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/mb_ripple">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/mb_primary" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+</ripple>

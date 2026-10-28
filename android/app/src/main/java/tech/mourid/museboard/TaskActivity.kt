@@ -1,0 +1,315 @@
+package tech.mourid.museboard
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Patterns
+import android.view.View
+import android.view.WindowManager
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+
+/**
+ * Task detail page (issue #5): tap a task in the app to open it.
+ *
+ * Notion-style: title, first step, when / where / due and notes are edited
+ * in place and save on their own (text after a short pause, dates at once,
+ * anything pending when leaving). Links in the notes get a tappable row.
+ * Done and Later work from here too. Opened with [EXTRA_SHRINK] (the "Too
+ * big?" chip, issue #7) it focuses the first step with a hint.
+ */
+class TaskActivity : Activity() {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val handler = Handler(Looper.getMainLooper())
+    private val saveSoon = Runnable { saveNow() }
+
+    private lateinit var status: TextView
+    private lateinit var titleEdit: EditText
+    private lateinit var stepEdit: EditText
+    private lateinit var whereEdit: EditText
+    private lateinit var notesEdit: EditText
+    private lateinit var whenValue: TextView
+    private lateinit var whenClear: ImageView
+    private lateinit var dueValue: TextView
+    private lateinit var dueClear: ImageView
+    private lateinit var links: LinearLayout
+
+    private var token: String? = null
+    private var taskId = -1
+    private var task: BoardTask? = null
+    /** Fields edited but not saved yet (API field name → value). */
+    private var pending = JSONObject()
+    /** Set while fill() writes the fields, so that isn't taken as an edit. */
+    private var filling = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_task)
+        token = TokenStore.get(this)
+        taskId = intent.getIntExtra(EXTRA_TASK_ID, -1)
+        if (token.isNullOrBlank() || taskId <= 0) {
+            finish()
+            return
+        }
+
+        status = findViewById(R.id.task_status)
+        titleEdit = findViewById(R.id.task_title_edit)
+        stepEdit = findViewById(R.id.task_step_edit)
+        whereEdit = findViewById(R.id.task_where_edit)
+        notesEdit = findViewById(R.id.task_notes_edit)
+        whenValue = findViewById(R.id.task_when_value)
+        whenClear = findViewById(R.id.task_when_clear)
+        dueValue = findViewById(R.id.task_due_value)
+        dueClear = findViewById(R.id.task_due_clear)
+        links = findViewById(R.id.task_links)
+
+        findViewById<View>(R.id.task_back).setOnClickListener { finish() }
+        titleEdit.onEdit { text ->
+            if (text.isBlank()) {
+                pending.remove("title")
+                status.setText(R.string.detail_title_empty)
+            } else {
+                queue("title", text)
+            }
+        }
+        stepEdit.onEdit { queue("first_step", it) }
+        whereEdit.onEdit { queue("plan_where", it) }
+        notesEdit.onEdit {
+            queue("detail", it)
+            showLinks(it)
+        }
+        findViewById<View>(R.id.task_when_row).setOnClickListener {
+            pickDateTime(this, parseIso(task?.planAt)) { picked ->
+                showTime(whenValue, whenClear, toIso(picked.millis))
+                queue("plan_at", picked.local)
+                saveNow()
+            }
+        }
+        whenClear.setOnClickListener {
+            showTime(whenValue, whenClear, null)
+            queue("plan_at", JSONObject.NULL)
+            saveNow()
+        }
+        findViewById<View>(R.id.task_due_row).setOnClickListener {
+            pickDateTime(this, parseIso(task?.dueAt)) { picked ->
+                showTime(dueValue, dueClear, toIso(picked.millis))
+                queue("due_at", picked.local)
+                saveNow()
+            }
+        }
+        dueClear.setOnClickListener {
+            showTime(dueValue, dueClear, null)
+            queue("due_at", JSONObject.NULL)
+            saveNow()
+        }
+        findViewById<View>(R.id.task_done).setOnClickListener { onDoneOrUndo() }
+        findViewById<View>(R.id.task_later).setOnClickListener { onLater() }
+
+        load()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(saveSoon)
+        saveNow()
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
+    // --- Load and show -------------------------------------------------------
+
+    private fun load() {
+        val t = token ?: return
+        scope.launch {
+            val loaded = try {
+                withContext(Dispatchers.IO) { ApiClient.getTask(t, taskId) }
+            } catch (_: Exception) {
+                null
+            }
+            if (loaded == null) {
+                status.setText(R.string.detail_load_failed)
+                return@launch
+            }
+            task = loaded
+            fill(loaded)
+        }
+    }
+
+    private fun fill(t: BoardTask) {
+        filling = true
+        titleEdit.setText(t.title)
+        stepEdit.setText(t.firstStep.orEmpty())
+        whereEdit.setText(t.planWhere.orEmpty())
+        notesEdit.setText(t.detail.orEmpty())
+        filling = false
+        showTime(whenValue, whenClear, t.planAt)
+        showTime(dueValue, dueClear, t.dueAt)
+        showLinks(t.detail.orEmpty())
+        val done = t.status == "done"
+        findViewById<TextView>(R.id.task_done).setText(if (done) R.string.undo else R.string.done)
+        findViewById<View>(R.id.task_later).visibility = if (done) View.GONE else View.VISIBLE
+
+        if (intent.getBooleanExtra(EXTRA_SHRINK, false) && !done) {
+            findViewById<View>(R.id.task_shrink_hint).visibility = View.VISIBLE
+            stepEdit.requestFocus()
+            stepEdit.setSelection(stepEdit.text.length)
+            @Suppress("DEPRECATION")
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        }
+    }
+
+    private fun showTime(value: TextView, clear: ImageView, iso: String?) {
+        val text = formatWhen(iso)
+        value.text = if (text.isEmpty()) getString(R.string.detail_none) else text
+        value.alpha = if (text.isEmpty()) 0.6f else 1f
+        clear.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    /** One tappable row per link found in the notes (up to 5). */
+    private fun showLinks(notes: String) {
+        links.removeAllViews()
+        val matcher = Patterns.WEB_URL.matcher(notes)
+        val found = LinkedHashSet<String>()
+        while (matcher.find() && found.size < 5) found.add(matcher.group())
+        for (url in found) {
+            val row = layoutInflater.inflate(R.layout.action_sheet_row, links, false)
+            row.findViewById<ImageView>(R.id.sheet_icon).setImageResource(R.drawable.mb_ic_link24)
+            row.findViewById<TextView>(R.id.sheet_label).apply {
+                text = url.removePrefix("https://").removePrefix("http://")
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.mb_primary))
+            }
+            row.setOnClickListener {
+                val uri = Uri.parse(if (url.contains("://")) url else "https://$url")
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: Exception) {
+                    Toast.makeText(this, R.string.action_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            links.addView(row)
+        }
+    }
+
+    // --- Saving ----------------------------------------------------------------
+
+    private fun queue(field: String, value: Any) {
+        pending.put(field, value)
+        handler.removeCallbacks(saveSoon)
+        handler.postDelayed(saveSoon, SAVE_DELAY_MS)
+    }
+
+    private fun saveNow() {
+        handler.removeCallbacks(saveSoon)
+        val t = token ?: return
+        if (pending.length() == 0) return
+        val fields = pending
+        pending = JSONObject()
+        status.setText(R.string.detail_saving)
+        // Not tied to the page: a save started on the way out still finishes.
+        CoroutineScope(Dispatchers.IO).launch {
+            val ok = try {
+                ApiClient.updateTask(t, taskId, fields)
+            } catch (_: Exception) {
+                false
+            }
+            withContext(Dispatchers.Main) {
+                if (ok) {
+                    status.setText(R.string.detail_saved)
+                    WidgetUpdater.requestRefresh(applicationContext)
+                } else {
+                    // Keep the edits for the next try, unless edited again since.
+                    fields.keys().forEach { key -> if (!pending.has(key)) pending.put(key, fields.get(key)) }
+                    status.setText(R.string.detail_not_saved)
+                }
+            }
+        }
+    }
+
+    // --- Done / Later ------------------------------------------------------------
+
+    private fun onDoneOrUndo() {
+        val current = task ?: return
+        saveNow()
+        val done = current.status == "done"
+        if (!done) PlanReminderReceiver.cancel(this, current.id)
+        runAndClose { t ->
+            if (done) ApiClient.reopenTask(t, current.id) else ApiClient.completeTask(t, current.id)
+        }
+    }
+
+    private fun onLater() {
+        val current = task ?: return
+        saveNow()
+        val sheet = ActionSheet(this, getString(R.string.later_title), current.title)
+        for (choice in LaterChoice.offered()) {
+            sheet.add(R.drawable.mb_ic_clock24, getString(choice.chip), clockTime(choice.at())) {
+                val until = choice.at()
+                PlanReminderReceiver.cancel(this, current.id)
+                runAndClose { t -> ApiClient.snoozeTask(t, current.id, until) }
+            }
+        }
+        sheet.show()
+    }
+
+    /** Runs a status change, refreshes the widget and goes back to the list. */
+    private fun runAndClose(call: (String) -> Boolean) {
+        val t = token ?: return
+        scope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) { call(t) }
+            } catch (_: Exception) {
+                false
+            }
+            if (ok) {
+                WidgetUpdater.requestRefresh(applicationContext)
+                finish()
+            } else {
+                Toast.makeText(this@TaskActivity, R.string.action_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /** Calls [onChange] with the new text on every user edit. */
+    private fun EditText.onEdit(onChange: (String) -> Unit) {
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                if (!filling) onChange(s?.toString().orEmpty())
+            }
+        })
+    }
+
+    companion object {
+        const val EXTRA_TASK_ID = "task_id"
+        const val EXTRA_SHRINK = "shrink"
+        private const val SAVE_DELAY_MS = 700L
+
+        fun intent(context: Context, taskId: Int, shrink: Boolean = false): Intent =
+            Intent(context, TaskActivity::class.java)
+                .putExtra(EXTRA_TASK_ID, taskId)
+                .putExtra(EXTRA_SHRINK, shrink)
+    }
+}

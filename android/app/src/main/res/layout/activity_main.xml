@@ -162,6 +162,21 @@
                             android:layout_marginTop="6dp"
                             android:textColor="@color/mb_muted"
                             android:textSize="14sp" />
+
+                        <!-- "Too big?" (issue #7): after two snoozes -->
+                        <TextView
+                            android:id="@+id/focus_too_big"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/mb_pill_tonal"
+                            android:gravity="center"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="@string/too_big"
+                            android:textColor="@color/mb_on_surface"
+                            android:textSize="13sp"
+                            android:visibility="gone" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -256,6 +271,22 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
+            <!-- Quick-add (issue #6) -->
+            <TextView
+                android:id="@+id/btn_add_task"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/mb_pill_tonal"
+                android:drawablePadding="10dp"
+                android:drawableStart="@drawable/mb_ic_add24"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="@string/add_task"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="15sp" />
+
             <TextView
                 android:id="@+id/label_later"
                 style="@style/MuseBoard.SectionLabel"
@@ -274,6 +305,17 @@
 
             <LinearLayout
                 android:id="@+id/list_done"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <!-- Weekly recap (issue #8) -->
+            <TextView
+                android:id="@+id/label_week"
+                style="@style/MuseBoard.SectionLabel" />
+
+            <LinearLayout
+                android:id="@+id/list_week"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />

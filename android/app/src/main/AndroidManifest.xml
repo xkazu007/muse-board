@@ -23,6 +23,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Task detail page (tap a task in the app) -->
+        <activity
+            android:name=".TaskActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- App icon shortcuts (Done / Later): invisible, forwards and closes -->
         <activity
             android:name=".ShortcutActionActivity"

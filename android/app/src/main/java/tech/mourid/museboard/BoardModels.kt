@@ -23,6 +23,8 @@ data class BoardTask(
     /** Hidden by "Later" until this time (null = not snoozed). */
     val snoozedUntil: String? = null,
     val completedAt: String? = null,
+    /** Times "Later" was used since the first step last changed. */
+    val snoozeCount: Int = 0,
 )
 
 data class BoardResponse(
@@ -57,6 +59,7 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     status = obj.optString("status", "open"),
     snoozedUntil = obj.stringOrNull("snoozed_until"),
     completedAt = obj.stringOrNull("completed_at"),
+    snoozeCount = obj.optInt("snooze_count", 0),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -103,6 +106,22 @@ private fun casablanca(pattern: String) = SimpleDateFormat(pattern, Locale.UK).a
 fun isToday(iso: String?, now: Long = System.currentTimeMillis()): Boolean {
     val t = parseIso(iso) ?: return false
     return dayIndex(t) == dayIndex(now)
+}
+
+/** The Casablanca calendar day of [millis], as a day number. */
+fun dayOf(millis: Long): Long = dayIndex(millis)
+
+/** Day number of this week's Monday, in Casablanca. */
+fun weekStartDay(now: Long = System.currentTimeMillis()): Long {
+    val dow = Calendar.getInstance(CASABLANCA).apply { timeInMillis = now }.get(Calendar.DAY_OF_WEEK)
+    val sinceMonday = (dow + 5) % 7 // Mon 0 … Sun 6
+    return dayIndex(now) - sinceMonday
+}
+
+/** "Mon 26 Oct" in Casablanca, for an API timestamp. */
+fun dayLabel(iso: String?): String {
+    val t = parseIso(iso) ?: return ""
+    return casablanca("EEE d MMM").format(Date(t))
 }
 
 private fun dayIndex(millis: Long): Long {

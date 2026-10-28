@@ -36,6 +36,19 @@ object ApiClient {
         return out
     }
 
+    /** One task (the detail page), or null. */
+    fun getTask(token: String, id: Int): BoardTask? =
+        get(token, "$BASE_URL/api/tasks/$id")?.let { parseTask(JSONObject(it).getJSONObject("task")) }
+
+    /** New task from the phone (quick-add). [fields]: the API's task fields. */
+    fun createTask(token: String, fields: JSONObject): Boolean =
+        post(token, "/api/tasks", fields.toString())
+
+    /** Edit a task. POST to /api/tasks/:id is the API's PATCH alias:
+     *  HttpURLConnection can't send PATCH on every Android version. */
+    fun updateTask(token: String, id: Int, fields: JSONObject): Boolean =
+        post(token, "/api/tasks/$id", fields.toString())
+
     fun completeTask(token: String, id: Int): Boolean =
         postAction(token, id, "complete")
 
@@ -69,10 +82,13 @@ object ApiClient {
         }
     }
 
-    private fun postAction(token: String, id: Int, action: String, json: String? = null): Boolean {
+    private fun postAction(token: String, id: Int, action: String, json: String? = null): Boolean =
+        post(token, "/api/tasks/$id/$action", json)
+
+    private fun post(token: String, path: String, json: String?): Boolean {
         var connection: HttpURLConnection? = null
         return try {
-            connection = (URL("$BASE_URL/api/tasks/$id/$action").openConnection() as HttpURLConnection).apply {
+            connection = (URL("$BASE_URL$path").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Authorization", "Bearer $token")
                 doOutput = true
