@@ -23,6 +23,15 @@
             </intent-filter>
         </activity>
 
+        <!-- App icon shortcuts (Done / Later): invisible, forwards and closes -->
+        <activity
+            android:name=".ShortcutActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- True home-screen widget -->
         <receiver
             android:name=".MuseBoardWidget"

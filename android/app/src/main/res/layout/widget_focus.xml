@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Focus widget (docs/design-system.md). 4×2: the first step of the
+<!-- Focus widget (docs/design-system.md). Android 12+ uses the twin in
+     layout-v31/ (Done is a native CheckBox there): keep the two in step.
+
+     4×2: the first step of the
      current task in large text, one big Done, Later. Taller sizes also show
      the "Then" list (WidgetUpdater picks per size on Android 12+).
 

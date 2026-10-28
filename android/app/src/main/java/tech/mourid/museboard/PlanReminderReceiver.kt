@@ -14,8 +14,9 @@ import android.os.Build
 
 /**
  * Fires at a task's plan time (armed by [PlanScheduler]) and posts one
- * notification: the first step as the title, "where · task" below, with a
- * Done action. One per plan, never repeated: frequent alerts get ignored.
+ * notification: the first step as the title, "where · task" below, with
+ * Done and "Later 1h" actions (both clear it). One per plan, never
+ * repeated: frequent alerts get ignored.
  */
 class PlanReminderReceiver : BroadcastReceiver() {
 
@@ -39,6 +40,11 @@ class PlanReminderReceiver : BroadcastReceiver() {
             context.getString(R.string.done_label),
             WidgetUpdater.actionPendingIntent(context, WidgetUpdater.ACTION_DONE, id),
         ).build()
+        val later = Notification.Action.Builder(
+            Icon.createWithResource(context, R.drawable.mb_ic_notification),
+            context.getString(R.string.later_1h),
+            WidgetUpdater.laterChipPendingIntent(context, id, LaterChoice.HOUR),
+        ).build()
         val open = PendingIntent.getActivity(
             context,
             0,
@@ -53,6 +59,7 @@ class PlanReminderReceiver : BroadcastReceiver() {
             .setContentIntent(open)
             .setAutoCancel(true)
             .addAction(done)
+            .addAction(later)
             .build()
         manager.notify(notificationId(id), notification)
     }

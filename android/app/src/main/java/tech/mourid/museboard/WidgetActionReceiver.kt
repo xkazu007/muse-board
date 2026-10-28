@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -16,6 +17,10 @@ import kotlinx.coroutines.launch
  *   call the API off the main thread (goAsync). Success: a refresh brings
  *   the real board. Failure: back to the real board, saying so.
  * - Refresh: fetch the board.
+ *
+ * Done from the Android 12+ checkbox waits [TICK_MS] before swapping in the
+ * next task: the launcher has already ticked the box, and the swap would
+ * otherwise cut its animation off.
  */
 class WidgetActionReceiver : BroadcastReceiver() {
 
@@ -25,6 +30,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
             WidgetUpdater.requestRefresh(context)
             return
         }
+        // Shown before the API call: the optimistic update, or nothing.
+        var show: suspend () -> Unit = {}
         val call: (String) -> Boolean = when (intent.action) {
             WidgetUpdater.ACTION_LATER_SHOW -> {
                 WidgetUpdater.showLaterChoices(context, taskId)
@@ -36,7 +43,11 @@ class WidgetActionReceiver : BroadcastReceiver() {
             }
             WidgetUpdater.ACTION_DONE -> {
                 PlanReminderReceiver.cancel(context, taskId)
-                WidgetUpdater.showOptimistic(context, taskId, done = true, untilMillis = null)
+                val wait = if (intent.getBooleanExtra(WidgetUpdater.EXTRA_FROM_CHECK, false)) TICK_MS else 0L
+                show = {
+                    delay(wait)
+                    WidgetUpdater.showOptimistic(context, taskId, done = true, untilMillis = null)
+                }
                 ({ token -> ApiClient.completeTask(token, taskId) })
             }
             WidgetUpdater.ACTION_SNOOZE -> {
@@ -44,6 +55,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     ?.let { name -> LaterChoice.values().firstOrNull { it.name == name } }
                     ?: LaterChoice.TOMORROW
                 val until = choice.at()
+                PlanReminderReceiver.cancel(context, taskId)
                 WidgetUpdater.showOptimistic(context, taskId, done = false, untilMillis = until)
                 ({ token -> ApiClient.snoozeTask(token, taskId, until) })
             }
@@ -61,9 +73,13 @@ class WidgetActionReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                show()
                 val token = TokenStore.get(context)
                 val ok = !token.isNullOrBlank() && call(token)
-                if (ok) WidgetUpdater.requestRefresh(context) else WidgetUpdater.showSaveFailed(context)
+                if (!ok) WidgetUpdater.showSaveFailed(context)
+                // Also after a failure: a stale target (a task already done
+                // elsewhere) gets the real board and fresh shortcuts.
+                WidgetUpdater.requestRefresh(context)
             } catch (_: UnauthorizedException) {
                 WidgetUpdater.requestRefresh(context)
             } catch (_: Exception) {
@@ -72,5 +88,9 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
+    }
+
+    private companion object {
+        const val TICK_MS = 420L
     }
 }

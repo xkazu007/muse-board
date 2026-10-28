@@ -4,4 +4,8 @@
          (values-v31), as the widget quality guidelines ask. -->
     <dimen name="mb_radius">24dp</dimen>
     <dimen name="mb_radius_inner">16dp</dimen>
+    <!-- App cards and rows (the app draws its own shapes, independent of
+         the launcher's widget radius). -->
+    <dimen name="mb_app_card_radius">28dp</dimen>
+    <dimen name="mb_app_row_radius">20dp</dimen>
 </resources>

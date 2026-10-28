@@ -53,8 +53,11 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 - **Focus block**: meta line (`Now · <plan time or "by" deadline> · <where>`)
   + done count on the right, the step (max 2 lines, so a 4×2 never clips), the task title (1
   line), the Then line (1 line).
-- **Done**: 60dp circle (64px web), `primary`, white check. The only filled
-  element.
+- **Done**: 60dp circle (64px web), `primary`. On Android 12+ (widget) and
+  in the app it is a native CheckBox: an empty ring with a faint check,
+  which fills and draws its check when tapped (animated-selector,
+  `drawable/mb_check_button.xml`). Before 12 the widget shows the filled
+  circle. The only filled element.
 - **Later**: plain text button, `muted`, 44dp tall. It never opens a popup:
   the widget itself swaps Done for three 44dp chips on `inset` (In 1 hour /
   Tonight / Tomorrow; Tonight only before 19:00) and Later becomes Back. The
@@ -68,6 +71,24 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   Try again."
 - **Then line when the queue is empty**: "Next: <task>, <time>" for the next
   snoozed task coming back, so "All clear." never hides what's coming.
+
+## Native gestures
+
+Android widgets can't take long-press (the launcher owns it) or swipe, on
+Samsung too. So each gesture lives where Android allows it:
+
+| Where | Gesture | Does |
+|---|---|---|
+| Widget | Tap the ring | Native tick animation, then Done |
+| App icon | Long-press | Shortcuts: "Done: <first step>", "Later: 1 hour" |
+| Reminder | Action buttons | Done, Later 1h |
+| App | Swipe a card right / left | Done (primary behind it) / Later (asks when) |
+| App | Long-press a card | Menu: Done, Later choices, or Undo |
+| App | Tick the ring | Same as the widget |
+
+Haptics: a tick when a swipe crosses its threshold (gesture threshold
+haptics on Android 14+), a confirm on Done. Every Done in the app shows an
+Undo bar for 6 s; on the widget the Undo stays for 60 s.
 
 ## Flow rules
 

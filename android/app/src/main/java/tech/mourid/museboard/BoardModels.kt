@@ -20,6 +20,9 @@ data class BoardTask(
     val planWhere: String?,
     val position: Int,
     val status: String,
+    /** Hidden by "Later" until this time (null = not snoozed). */
+    val snoozedUntil: String? = null,
+    val completedAt: String? = null,
 )
 
 data class BoardResponse(
@@ -52,6 +55,8 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     planWhere = obj.stringOrNull("plan_where"),
     position = obj.optInt("position", 0),
     status = obj.optString("status", "open"),
+    snoozedUntil = obj.stringOrNull("snoozed_until"),
+    completedAt = obj.stringOrNull("completed_at"),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -92,6 +97,12 @@ fun toIso(millis: Long): String = isoParser().format(Date(millis))
 
 private fun casablanca(pattern: String) = SimpleDateFormat(pattern, Locale.UK).apply {
     timeZone = CASABLANCA
+}
+
+/** True when [iso] falls on today's date in Casablanca. */
+fun isToday(iso: String?, now: Long = System.currentTimeMillis()): Boolean {
+    val t = parseIso(iso) ?: return false
+    return dayIndex(t) == dayIndex(now)
 }
 
 private fun dayIndex(millis: Long): Long {

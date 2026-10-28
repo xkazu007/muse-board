@@ -5,13 +5,11 @@
     <string name="widget_desc">The one thing to do now, as a two-minute first step.</string>
 
     <!-- Widget + app copy. Tone: neutral and short; no guilt. -->
-    <string name="do_this_now">NOW</string>
     <string name="done">✓ Done</string>
     <string name="done_label">Done</string>
     <string name="later">Later</string>
     <string name="all_clear">All clear.</string>
     <string name="all_clear_detail">Nothing left today.</string>
-    <string name="done_today">%1$d done today</string>
     <string name="done_count_short">%1$d done</string>
     <string name="then">Then: %1$s</string>
     <string name="done_feedback">✓ Done. %1$d today.</string>
@@ -29,6 +27,23 @@
     <string name="later_chip_tonight">Tonight</string>
     <string name="later_chip_tomorrow">Tomorrow</string>
     <string name="back">Back</string>
+    <string name="later_1h">Later 1h</string>
+
+    <!-- App screen -->
+    <string name="section_then">Then</string>
+    <string name="section_later">Later</string>
+    <string name="section_done">Done today</string>
+    <string name="gesture_hint">Swipe right for Done, left for Later. Hold a task for more.</string>
+    <string name="back_at">Back %1$s</string>
+    <string name="start_with">Start: %1$s</string>
+    <string name="menu_done">Done</string>
+    <string name="menu_undo">Undo</string>
+    <string name="menu_later">Later: %1$s</string>
+
+    <!-- App icon long-press shortcuts -->
+    <string name="shortcut_done">Done: %1$s</string>
+    <string name="shortcut_later">Later: 1 hour</string>
+    <string name="shortcut_done_toast">✓ Done.</string>
     <string name="cancel">Cancel</string>
     <string name="undone">Back on your board.</string>
     <string name="next_plan">Next: %1$s</string>
@@ -45,12 +60,10 @@
     <string name="token_invalid">That token didn\'t work. Try again.</string>
     <string name="save">Save</string>
     <string name="refresh">Refresh</string>
-    <string name="all_tasks">ALL TASKS</string>
     <string name="change_token">Change token</string>
     <string name="board_unreachable">Couldn\'t reach the board. Check your connection.</string>
     <string name="action_failed">That didn\'t work. Try again.</string>
     <string name="undo">Undo</string>
-    <string name="widget_help">To add the widget: long-press your home screen → Widgets → Muse Board.</string>
     <string name="add_widget">Add widget to home screen</string>
     <string name="widget_pin_ok">Tap Add in the dialog to place the widget.</string>
     <string name="widget_pin_failed">Couldn\'t open the add-widget dialog. Long-press the home screen → Widgets → Muse Board instead.</string>

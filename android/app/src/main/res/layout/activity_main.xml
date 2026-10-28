@@ -1,23 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- App screen, same design as the widget and web app
+     (docs/design-system.md). Focus card and task rows are SwipeRows:
+     swipe right = Done, swipe left = Later, long-press = menu. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/widget_bg"
+    android:background="@color/mb_page"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingStart="16dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="32dp">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/text"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:textColor="@color/mb_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/mb_muted"
+                android:textSize="14sp" />
+        </LinearLayout>
 
         <!-- First run: paste the board token once -->
         <LinearLayout
@@ -25,15 +46,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:background="@drawable/mb_card_bg"
             android:orientation="vertical"
+            android:padding="20dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/token_title"
-                android:textColor="@color/text"
-                android:textSize="18sp"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -41,32 +64,33 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="@string/token_hint"
-                android:textColor="@color/muted"
+                android:textColor="@color/mb_muted"
                 android:textSize="14sp" />
 
             <EditText
                 android:id="@+id/token_input"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="12dp"
+                android:layout_height="52dp"
+                android:layout_marginTop="14dp"
                 android:autofillHints=""
-                android:background="@drawable/btn_ghost"
+                android:background="@drawable/mb_field_bg"
                 android:hint="@string/token_hint_input"
                 android:inputType="textPassword"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                android:textColor="@color/text"
-                android:textColorHint="@color/muted" />
+                android:textColor="@color/mb_on_surface"
+                android:textColorHint="@color/mb_muted" />
 
             <Button
                 android:id="@+id/token_save"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="52dp"
                 android:layout_marginTop="12dp"
-                android:background="@drawable/btn_done"
+                android:background="@drawable/mb_button_primary"
+                android:stateListAnimator="@null"
                 android:text="@string/save"
                 android:textAllCaps="false"
-                android:textColor="#ffffff"
+                android:textColor="@color/mb_on_primary"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -76,11 +100,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="@string/token_invalid"
-                android:textColor="#ff8a80"
+                android:textColor="@color/mb_on_surface"
+                android:textStyle="bold"
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Signed in: focus task + full list -->
+        <!-- Signed in -->
         <LinearLayout
             android:id="@+id/board_box"
             android:layout_width="match_parent"
@@ -88,129 +113,205 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
+            <tech.mourid.museboard.SwipeRow
+                android:id="@+id/focus_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/do_this_now"
-                android:textColor="@color/accent"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="16dp">
 
-            <TextView
-                android:id="@+id/focus_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/text"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                <include layout="@layout/swipe_background" />
 
-            <TextView
-                android:id="@+id/focus_detail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                <LinearLayout
+                    android:id="@+id/focus_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/mb_card_bg"
+                    android:gravity="center_vertical"
+                    android:longClickable="true"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
 
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/focus_meta"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:letterSpacing="0.08"
+                            android:textAllCaps="true"
+                            android:textColor="@color/mb_muted"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/focus_step"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:textColor="@color/mb_on_surface"
+                            android:textSize="26sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/focus_task"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:textColor="@color/mb_muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical">
+
+                        <CheckBox
+                            android:id="@+id/focus_check"
+                            android:layout_width="64dp"
+                            android:layout_height="64dp"
+                            android:background="@null"
+                            android:button="@drawable/mb_check_button"
+                            android:contentDescription="@string/done_label"
+                            android:gravity="center"
+                            android:paddingStart="2dp"
+                            android:paddingTop="2dp" />
+
+                        <TextView
+                            android:id="@+id/focus_later"
+                            android:layout_width="wrap_content"
+                            android:layout_height="44dp"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:gravity="center"
+                            android:minWidth="64dp"
+                            android:text="@string/later"
+                            android:textColor="@color/mb_muted"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </tech.mourid.museboard.SwipeRow>
+
+            <!-- "✓ Done. 2 today. Undo" for a few seconds after an action -->
             <LinearLayout
+                android:id="@+id/undo_bar"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:orientation="horizontal">
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/mb_button_tonal"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingEnd="6dp"
+                android:visibility="gone">
 
-                <Button
-                    android:id="@+id/btn_done"
+                <TextView
+                    android:id="@+id/undo_text"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/btn_done"
-                    android:text="@string/done"
-                    android:textAllCaps="false"
-                    android:textColor="#ffffff"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:textColor="@color/mb_on_surface"
+                    android:textSize="14sp" />
 
-                <Button
-                    android:id="@+id/btn_snooze"
+                <TextView
+                    android:id="@+id/undo_button"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/btn_ghost"
-                    android:text="@string/later"
-                    android:textAllCaps="false"
-                    android:textColor="@color/text"
-                    android:textSize="15sp" />
+                    android:layout_height="44dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:gravity="center"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="@string/undo"
+                    android:textColor="@color/mb_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/done_count"
+                android:id="@+id/gesture_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                android:layout_marginTop="10dp"
+                android:gravity="center_horizontal"
+                android:text="@string/gesture_hint"
+                android:textColor="@color/mb_muted"
+                android:textSize="12sp"
+                android:visibility="gone" />
 
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:text="@string/all_tasks"
-                android:textColor="@color/accent"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:id="@+id/label_then"
+                style="@style/MuseBoard.SectionLabel"
+                android:text="@string/section_then" />
 
             <LinearLayout
-                android:id="@+id/task_list"
+                android:id="@+id/list_then"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/label_later"
+                style="@style/MuseBoard.SectionLabel"
+                android:text="@string/section_later" />
+
+            <LinearLayout
+                android:id="@+id/list_later"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/label_done"
+                style="@style/MuseBoard.SectionLabel"
+                android:text="@string/section_done" />
+
+            <LinearLayout
+                android:id="@+id/list_done"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
             <Button
-                android:id="@+id/btn_refresh"
+                android:id="@+id/btn_add_widget"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/btn_ghost"
-                android:text="@string/refresh"
+                android:layout_height="52dp"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/mb_button_tonal"
+                android:stateListAnimator="@null"
+                android:text="@string/add_widget"
                 android:textAllCaps="false"
-                android:textColor="@color/text"
+                android:textColor="@color/mb_on_surface"
                 android:textSize="15sp" />
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:text="@string/widget_help"
-                android:textColor="@color/muted"
-                android:textSize="14sp" />
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/btn_change_token"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/btn_ghost"
-                android:text="@string/change_token"
-                android:textAllCaps="false"
-                android:textColor="@color/text"
-                android:textSize="15sp" />
+                <TextView
+                    android:id="@+id/btn_refresh"
+                    style="@style/MuseBoard.FooterLink"
+                    android:text="@string/refresh" />
+
+                <TextView
+                    style="@style/MuseBoard.FooterLink"
+                    android:importantForAccessibility="no"
+                    android:minWidth="0dp"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:text="·" />
+
+                <TextView
+                    android:id="@+id/btn_change_token"
+                    style="@style/MuseBoard.FooterLink"
+                    android:text="@string/change_token" />
+            </LinearLayout>
         </LinearLayout>
-
-        <!-- Pin the widget from inside the app: opens the launcher's
-             "Add to Home screen" dialog, no widget-picker hunting needed. -->
-        <Button
-            android:id="@+id/btn_add_widget"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/btn_done"
-            android:text="@string/add_widget"
-            android:textAllCaps="false"
-            android:textColor="#ffffff"
-            android:textSize="16sp"
-            android:textStyle="bold" />
     </LinearLayout>
 </ScrollView>

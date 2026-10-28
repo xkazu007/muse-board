@@ -35,6 +35,7 @@ object WidgetUpdater {
     const val ACTION_UNDO = "tech.mourid.museboard.ACTION_UNDO"
     const val EXTRA_TASK_ID = "task_id"
     const val EXTRA_CHOICE = "later_choice"
+    const val EXTRA_FROM_CHECK = "from_check"
 
     private const val REFRESH_INTERVAL_MS = 30L * 60L * 1000L
     private const val ALARM_REQUEST_CODE = 1001
@@ -55,8 +56,13 @@ object WidgetUpdater {
         R.id.mb_then,
     )
     private val LATER_CHIPS = intArrayOf(R.id.mb_later_1, R.id.mb_later_2, R.id.mb_later_3)
+
+    /** Android 12+ uses layout-v31 where Done is a native CheckBox. */
+    private val CHECKBOX = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    private val DONE_VIEW = if (CHECKBOX) R.id.mb_check else R.id.mb_btn_done
+
     private val HIDEABLE_VIEWS = intArrayOf(
-        R.id.mb_btn_done,
+        DONE_VIEW,
         R.id.mb_btn_later,
         R.id.mb_then_row,
         R.id.mb_undo,
@@ -225,6 +231,8 @@ object WidgetUpdater {
         val views = RemoteViews(context.packageName, R.layout.widget_focus)
         for (id in TEXT_VIEWS) views.setTextViewText(id, "")
         for (id in HIDEABLE_VIEWS) views.setViewVisibility(id, View.GONE)
+        // A checked box would carry over to the next task: always start clear.
+        if (CHECKBOX) views.setCompoundButtonChecked(R.id.mb_check, false)
         return views
     }
 
@@ -260,13 +268,22 @@ object WidgetUpdater {
                 R.id.mb_task,
                 if (focus.firstStep != null) focus.title else focus.detail.orEmpty(),
             )
-            views.setViewVisibility(R.id.mb_btn_done, View.VISIBLE)
+            views.setViewVisibility(DONE_VIEW, View.VISIBLE)
             views.setViewVisibility(R.id.mb_btn_later, View.VISIBLE)
             views.setTextViewText(R.id.mb_btn_later, context.getString(R.string.later))
-            views.setOnClickPendingIntent(
-                R.id.mb_btn_done,
-                actionPendingIntent(context, ACTION_DONE, focus.id),
-            )
+            if (CHECKBOX) {
+                // The launcher ticks the box itself (instant, animated), then
+                // fires this; WidgetActionReceiver lets the tick play out.
+                views.setOnCheckedChangeResponse(
+                    R.id.mb_check,
+                    RemoteViews.RemoteResponse.fromPendingIntent(checkPendingIntent(context, focus.id)),
+                )
+            } else {
+                views.setOnClickPendingIntent(
+                    R.id.mb_btn_done,
+                    actionPendingIntent(context, ACTION_DONE, focus.id),
+                )
+            }
             views.setOnClickPendingIntent(
                 R.id.mb_btn_later,
                 actionPendingIntent(context, ACTION_LATER_SHOW, focus.id),
@@ -343,10 +360,28 @@ object WidgetUpdater {
         )
     }
 
-    /** One Later chip: snooze [taskId] with [choice], resolved at tap time.
+    /** The checkbox's Done. Mutable (Android 12+ only) because the launcher
+     *  fills in the checked state; the intent is explicit, so that's safe.
+     *  [EXTRA_FROM_CHECK] tells the receiver to wait for the tick animation. */
+    private fun checkPendingIntent(context: Context, taskId: Int): PendingIntent {
+        val intent = Intent(context, WidgetActionReceiver::class.java)
+            .setAction(ACTION_DONE)
+            .setData(Uri.parse("museboard://check/$taskId"))
+            .putExtra(EXTRA_TASK_ID, taskId)
+            .putExtra(EXTRA_FROM_CHECK, true)
+        return PendingIntent.getBroadcast(
+            context,
+            taskId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+    }
+
+    /** One Later choice (widget chip, reminder action, icon shortcut):
+     *  snooze [taskId] with [choice], resolved at tap time.
      *  The data URI keeps the three chips' PendingIntents apart (extras
      *  alone don't). */
-    private fun laterChipPendingIntent(context: Context, taskId: Int, choice: LaterChoice): PendingIntent {
+    fun laterChipPendingIntent(context: Context, taskId: Int, choice: LaterChoice): PendingIntent {
         val intent = Intent(context, WidgetActionReceiver::class.java)
             .setAction(ACTION_SNOOZE)
             .setData(Uri.parse("museboard://later/$taskId/${choice.name}"))
