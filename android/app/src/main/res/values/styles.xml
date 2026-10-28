@@ -20,8 +20,14 @@
         <item name="android:gravity">center</item>
         <item name="android:paddingStart">10dp</item>
         <item name="android:paddingEnd">10dp</item>
-        <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="android:background">@drawable/mb_ripple_rounded</item>
         <item name="android:textColor">@color/mb_primary</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Bottom sheet (ActionSheet): slides up from the bottom. -->
+    <style name="MuseBoard.SheetAnimation" parent="">
+        <item name="android:windowEnterAnimation">@anim/mb_sheet_in</item>
+        <item name="android:windowExitAnimation">@anim/mb_sheet_out</item>
     </style>
 </resources>

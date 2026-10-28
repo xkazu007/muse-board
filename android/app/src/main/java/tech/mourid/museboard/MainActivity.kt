@@ -2,7 +2,6 @@ package tech.mourid.museboard
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.pm.PackageManager
@@ -15,7 +14,6 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -94,8 +92,8 @@ class MainActivity : Activity() {
             focusCheck.postDelayed({ complete(focus) }, TICK_MS)
         }
         focusLater.setOnClickListener { board?.focus?.let { askLater(it, focusRow) } }
-        findViewById<View>(R.id.focus_card).setOnLongClickListener { v ->
-            board?.focus?.let { showMenu(v, it) }
+        findViewById<View>(R.id.focus_card).setOnLongClickListener {
+            board?.focus?.let { showMenu(it) }
             true
         }
 
@@ -150,6 +148,7 @@ class MainActivity : Activity() {
 
     private fun render(b: BoardResponse, tasks: List<BoardTask>) {
         dateView.text = shortDate(b.date)
+        findViewById<View>(R.id.btn_add_widget).visibility = if (hasWidget()) View.GONE else View.VISIBLE
 
         val focus = b.focus
         rendering = true
@@ -228,8 +227,8 @@ class MainActivity : Activity() {
                 row.onSwipeRight = { complete(task) }
                 row.onSwipeLeft = { askLater(task, row) }
             }
-            row.findViewById<View>(R.id.task_row).setOnLongClickListener { v ->
-                showMenu(v, task)
+            row.findViewById<View>(R.id.task_row).setOnLongClickListener {
+                showMenu(task)
                 true
             }
             list.addView(row)
@@ -259,20 +258,21 @@ class MainActivity : Activity() {
         }
     }
 
-    /** "Later" asks when; cancelling puts the swiped card back. */
+    /** "Later" asks when, in the bottom sheet; cancelling puts a swiped
+     *  card back. */
     private fun askLater(task: BoardTask, row: SwipeRow?) {
         markHintSeen()
-        val choices = LaterChoice.offered()
-        var picked = false
-        AlertDialog.Builder(this)
-            .setTitle(R.string.later_title)
-            .setItems(choices.map { getString(it.label) }.toTypedArray()) { _, which ->
-                picked = true
-                snooze(task, choices[which])
+        val sheet = ActionSheet(this, getString(R.string.later_title), task.title)
+        addLaterRows(sheet, task)
+        sheet.onCancel { row?.reset() }.show()
+    }
+
+    private fun addLaterRows(sheet: ActionSheet, task: BoardTask) {
+        for (choice in LaterChoice.offered()) {
+            sheet.add(R.drawable.mb_ic_clock24, getString(choice.chip), clockTime(choice.at())) {
+                snooze(task, choice)
             }
-            .setNegativeButton(R.string.cancel, null)
-            .setOnDismissListener { if (!picked) row?.reset() }
-            .show()
+        }
     }
 
     private fun snooze(task: BoardTask, choice: LaterChoice) {
@@ -283,26 +283,20 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Long-press: the same actions as the gestures, spelled out. */
-    private fun showMenu(anchor: View, task: BoardTask) {
-        val menu = PopupMenu(this, anchor)
+    /** Long-press: the same actions as the gestures, in the bottom sheet. */
+    private fun showMenu(task: BoardTask) {
+        val sheet = ActionSheet(
+            this,
+            task.firstStep ?: task.title,
+            if (task.firstStep != null) task.title else null,
+        )
         if (task.status == "done") {
-            menu.menu.add(0, MENU_UNDO, 0, R.string.menu_undo)
+            sheet.add(R.drawable.mb_ic_undo24, getString(R.string.undo)) { reopen(task) }
         } else {
-            menu.menu.add(0, MENU_DONE, 0, R.string.menu_done)
-            LaterChoice.offered().forEachIndexed { i, choice ->
-                menu.menu.add(0, MENU_LATER + i, i + 1, getString(R.string.menu_later, getString(choice.label)))
-            }
+            sheet.add(R.drawable.mb_ic_done24, getString(R.string.done_label)) { complete(task) }
+            addLaterRows(sheet, task)
         }
-        menu.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                MENU_DONE -> complete(task)
-                MENU_UNDO -> reopen(task)
-                else -> LaterChoice.offered().getOrNull(item.itemId - MENU_LATER)?.let { snooze(task, it) }
-            }
-            true
-        }
-        menu.show()
+        sheet.show()
     }
 
     /** Calls the API, then reloads the app and refreshes the widget (and
@@ -416,6 +410,10 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun hasWidget(): Boolean = AppWidgetManager.getInstance(this)
+        .getAppWidgetIds(ComponentName(this, MuseBoardWidget::class.java))
+        .isNotEmpty()
+
     /** Plan reminders need the notification permission on Android 13+.
      *  Asked once, after sign-in; a "no" is respected (reminders stay off). */
     private fun askForNotificationsOnce() {
@@ -440,8 +438,5 @@ class MainActivity : Activity() {
         const val UI_PREFS = "muse_board_ui"
         const val TICK_MS = 420L
         const val UNDO_MS = 6_000L
-        const val MENU_DONE = 1
-        const val MENU_UNDO = 2
-        const val MENU_LATER = 10
     }
 }

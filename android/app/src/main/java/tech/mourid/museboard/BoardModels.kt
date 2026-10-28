@@ -122,6 +122,9 @@ fun formatWhen(iso: String?, now: Long = System.currentTimeMillis()): String {
     }
 }
 
+/** "20:00" in Casablanca, for epoch millis. */
+fun clockTime(millis: Long): String = casablanca("HH:mm").format(Date(millis))
+
 /** Kept for the app's task list: "Wed 28 Oct, 16:00", or "". */
 fun formatDue(iso: String?): String {
     val t = parseIso(iso) ?: return ""
