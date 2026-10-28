@@ -15,6 +15,7 @@ import org.json.JSONObject
 object BoardCache {
     private const val PREFS = "muse_board_cache"
     private const val KEY_BOARD = "board_json"
+    private const val KEY_TASKS = "tasks_json"
     private const val KEY_NOTICE = "notice"
     private const val KEY_NOTICE_UNTIL = "notice_until"
     private const val KEY_UNDO_ID = "undo_id"
@@ -31,6 +32,20 @@ object BoardCache {
         val json = prefs(context).getString(KEY_BOARD, null) ?: return null
         return try {
             parseBoard(JSONObject(json))
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** The full task list (the app paints from it before the network). */
+    fun saveTasks(context: Context, json: String) {
+        prefs(context).edit().putString(KEY_TASKS, json).apply()
+    }
+
+    fun loadTasks(context: Context): List<BoardTask>? {
+        val json = prefs(context).getString(KEY_TASKS, null) ?: return null
+        return try {
+            parseTasks(json)
         } catch (_: Exception) {
             null
         }

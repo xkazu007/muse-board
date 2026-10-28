@@ -12,15 +12,15 @@
         android:id="@+id/task_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/mb_row_bg"
+        android:background="@drawable/mb_row_surface"
         android:gravity="center_vertical"
         android:longClickable="true"
-        android:minHeight="60dp"
+        android:minHeight="64dp"
         android:orientation="horizontal"
-        android:paddingStart="18dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="18dp"
-        android:paddingBottom="12dp">
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="14dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -33,26 +33,27 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="@color/mb_on_surface"
-                android:textSize="15sp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/task_detail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:textColor="@color/mb_muted"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:visibility="gone" />
 
             <!-- "Too big?" (issue #7): after two snoozes -->
             <TextView
                 android:id="@+id/task_too_big"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/mb_pill_tonal"
+                android:layout_height="48dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/mb_chip_tonal_inset"
                 android:gravity="center"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
@@ -62,12 +63,41 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/task_when"
+        <!-- Right: the time (tinted when the deadline is near), and the
+             estimate chip under it -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:textColor="@color/mb_muted"
-            android:textSize="13sp" />
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/task_when"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/mb_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/task_estimate"
+                style="@style/MuseBoard.Chip"
+                android:layout_marginTop="6dp"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Go-to link (issue #12) -->
+        <ImageView
+            android:id="@+id/task_open"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="-12dp"
+            android:background="@drawable/mb_ripple_rounded"
+            android:contentDescription="@string/open_link"
+            android:scaleType="center"
+            android:src="@drawable/mb_ic_link24"
+            android:visibility="gone" />
     </LinearLayout>
 </tech.mourid.museboard.SwipeRow>

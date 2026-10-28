@@ -4,9 +4,13 @@ import android.Manifest
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
@@ -19,9 +23,12 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -34,6 +41,11 @@ import java.util.TimeZone
  * swipe left for Later (asks when), long-press for a menu; haptics on each.
  * Every Done gets an Undo bar for a few seconds. The widget and icon
  * shortcuts are refreshed after every change.
+ *
+ * Feels instant: the last board and task list paint from the phone's cache
+ * at once and the network refreshes behind them (both calls in parallel);
+ * the screen redraws only when the data changed; Done / Later / Undo
+ * update the screen first and the server catches up (like the widget).
  *
  * Framework Activity only (no AppCompat): the app carries no AndroidX.
  */
@@ -59,9 +71,20 @@ class MainActivity : Activity() {
 
     private var token: String? = null
     private var board: BoardResponse? = null
+    private var tasks: List<BoardTask> = emptyList()
+    /** Group filter chip (issue #12); null = All. */
+    private var groupFilter: String? = null
+    private lateinit var offlineNote: View
     /** Set while render() resets the checkbox, so that isn't taken as a tap. */
     private var rendering = false
-    private val hideUndo = Runnable { undoBar.visibility = View.GONE }
+    private val hideUndo = Runnable {
+        undoBar.animate().alpha(0f).translationY(dp(16).toFloat()).setDuration(160)
+            .withEndAction { undoBar.visibility = View.GONE }.start()
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppTheme.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,8 +105,9 @@ class MainActivity : Activity() {
         undoText = findViewById(R.id.undo_text)
         undoButton = findViewById(R.id.undo_button)
         gestureHint = findViewById(R.id.gesture_hint)
+        offlineNote = findViewById(R.id.offline_note)
 
-        styleSwipe(focusRow, R.dimen.mb_app_card_radius)
+        styleSwipe(focusRow, resources.getDimension(R.dimen.mb_app_card_radius))
         focusCheck.setOnCheckedChangeListener { _, checked ->
             if (!checked || rendering) return@setOnCheckedChangeListener
             val focus = board?.focus ?: return@setOnCheckedChangeListener
@@ -91,29 +115,34 @@ class MainActivity : Activity() {
             // Let the tick animation play before the card changes.
             focusCheck.postDelayed({ complete(focus) }, TICK_MS)
         }
-        focusLater.setOnClickListener { board?.focus?.let { askLater(it, focusRow) } }
+        focusLater.onTap { board?.focus?.let { askLater(it, focusRow) } }
         findViewById<View>(R.id.focus_card).setOnLongClickListener {
             board?.focus?.let { showMenu(it) }
             true
         }
-        findViewById<View>(R.id.focus_card).setOnClickListener { board?.focus?.let { openTask(it) } }
-        findViewById<View>(R.id.focus_too_big).setOnClickListener {
+        findViewById<View>(R.id.focus_card).onTap { board?.focus?.let { openTask(it) } }
+        findViewById<View>(R.id.focus_too_big).onTap {
             board?.focus?.let { openTask(it, shrink = true) }
         }
-
-        findViewById<Button>(R.id.token_save).setOnClickListener { saveToken() }
-        findViewById<View>(R.id.btn_refresh).setOnClickListener { loadAll() }
-        findViewById<View>(R.id.btn_change_token).setOnClickListener {
-            TokenStore.clear(this)
-            token = null
-            showTokenBox()
-            WidgetUpdater.requestRefresh(this)
+        findViewById<View>(R.id.focus_open).onTap {
+            board?.focus?.url?.let { openLink(this, it) }
         }
-        findViewById<Button>(R.id.btn_add_widget).setOnClickListener { requestPinWidget() }
-        findViewById<View>(R.id.btn_add_task).setOnClickListener { showQuickAdd() }
+
+        findViewById<Button>(R.id.token_save).onTap { saveToken() }
+        findViewById<View>(R.id.btn_calendar).onTap {
+            startActivity(Intent(this, CalendarActivity::class.java))
+        }
+        findViewById<View>(R.id.btn_more).onTap { showMoreMenu() }
+        findViewById<Button>(R.id.btn_add_widget).onTap { requestPinWidget() }
+        findViewById<View>(R.id.btn_add_task).onTap { showQuickAdd() }
 
         token = TokenStore.get(this)
-        if (token.isNullOrBlank()) showTokenBox() else showBoard()
+        if (token.isNullOrBlank()) {
+            showTokenBox()
+        } else {
+            showBoard()
+            showCached()
+        }
     }
 
     override fun onResume() {
@@ -128,27 +157,87 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    /** ⋮ in the header: the less used things, in the bottom sheet. */
+    private fun showMoreMenu() {
+        val mode = AppTheme.get(this)
+        val sheet = ActionSheet(this, getString(R.string.app_name))
+        sheet.add(R.drawable.mb_ic_history24, getString(R.string.history)) {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+        sheet.add(AppTheme.icon(mode), getString(AppTheme.label(mode))) { AppTheme.cycle(this) }
+        if (!hasWidget()) sheet.add(R.drawable.mb_ic_widget24, getString(R.string.add_widget)) { requestPinWidget() }
+        sheet.add(R.drawable.mb_ic_refresh24, getString(R.string.refresh)) { loadAll() }
+        if (!token.isNullOrBlank()) {
+            sheet.add(R.drawable.mb_ic_key24, getString(R.string.change_token)) {
+                TokenStore.clear(this)
+                token = null
+                showTokenBox()
+                WidgetUpdater.requestRefresh(this)
+            }
+        }
+        sheet.show()
+    }
+
     // --- Loading and rendering -----------------------------------------------
 
+    /** The last board and task list, straight from the cache: no wait. */
+    private fun showCached() {
+        val b = BoardCache.load(this) ?: return
+        val ts = BoardCache.loadTasks(this) ?: return
+        show(b, ts)
+    }
+
+    /** Board and task list from the API, fetched in parallel, cached, and
+     *  shown if they changed. Offline: the cached view stays, with a note. */
     private fun loadAll() {
         val t = token ?: return
         scope.launch {
-            val loaded = try {
-                withContext(Dispatchers.IO) { ApiClient.getBoard(t) to ApiClient.getTasks(t) }
+            val fetched = try {
+                withContext(Dispatchers.IO) {
+                    coroutineScope {
+                        val b = async { ApiClient.getBoardJson(t) }
+                        val ts = async { ApiClient.getTasksJson(t) }
+                        b.await() to ts.await()
+                    }
+                }
             } catch (_: UnauthorizedException) {
                 onTokenRejected()
                 return@launch
             } catch (_: Exception) {
                 null
             }
-            val (b, tasks) = loaded ?: (null to null)
-            if (b == null || tasks == null) {
-                Toast.makeText(this@MainActivity, R.string.board_unreachable, Toast.LENGTH_SHORT).show()
+            val (boardJson, tasksJson) = fetched ?: (null to null)
+            if (boardJson == null || tasksJson == null) {
+                if (board != null) {
+                    offlineNote.visibility = View.VISIBLE
+                } else {
+                    Toast.makeText(this@MainActivity, R.string.board_unreachable, Toast.LENGTH_SHORT).show()
+                }
                 return@launch
             }
-            board = b
-            render(b, tasks)
+            offlineNote.visibility = View.GONE
+            BoardCache.save(this@MainActivity, boardJson)
+            BoardCache.saveTasks(this@MainActivity, tasksJson)
+            show(parseBoard(JSONObject(boardJson)), parseTasks(tasksJson))
         }
+    }
+
+    /** Draws [b] and [ts] unless they are what's already on screen: a
+     *  refresh with no changes never rebuilds the list (no flash). */
+    private fun show(b: BoardResponse, ts: List<BoardTask>) {
+        if (b == board && ts == tasks && boardBox.tag == RENDERED) return
+        board = b
+        tasks = ts
+        boardBox.tag = RENDERED
+        render(b, ts)
+    }
+
+    /** Applies [change] to what's on screen right away (optimistic), before
+     *  the API call; the next loadAll() brings the real state. */
+    private fun optimistic(change: (BoardResponse, List<BoardTask>) -> Pair<BoardResponse, List<BoardTask>>) {
+        val b = board ?: return
+        val (nb, nts) = change(b, tasks)
+        show(nb, nts)
     }
 
     private fun render(b: BoardResponse, tasks: List<BoardTask>) {
@@ -161,16 +250,21 @@ class MainActivity : Activity() {
         rendering = false
         focusRow.reset()
         if (focus != null) {
-            focusMetaView.text = focusMeta(focus)
+            focusMetaView.text = planLine(focus)
+            findViewById<TextView>(R.id.focus_due).showDueChip(focus)
+            findViewById<TextView>(R.id.focus_estimate).showEstimateChip(focus)
             focusStep.text = focus.firstStep ?: focus.title
             focusTask.text = if (focus.firstStep != null) focus.title else focus.detail.orEmpty()
             focusCheck.visibility = View.VISIBLE
             focusLater.visibility = View.VISIBLE
             findViewById<View>(R.id.focus_too_big).visibility = if (tooBig(focus)) View.VISIBLE else View.GONE
+            findViewById<View>(R.id.focus_open).visibility = if (focus.url != null) View.VISIBLE else View.GONE
             focusRow.onSwipeRight = { complete(focus) }
             focusRow.onSwipeLeft = { askLater(focus, focusRow) }
         } else {
             focusMetaView.text = ""
+            findViewById<View>(R.id.focus_due).visibility = View.GONE
+            findViewById<View>(R.id.focus_estimate).visibility = View.GONE
             focusStep.setText(R.string.all_clear)
             val comingBack = b.plans.firstOrNull()
             focusTask.text = if (comingBack != null) {
@@ -181,6 +275,7 @@ class MainActivity : Activity() {
             focusCheck.visibility = View.GONE
             focusLater.visibility = View.GONE
             findViewById<View>(R.id.focus_too_big).visibility = View.GONE
+            findViewById<View>(R.id.focus_open).visibility = View.GONE
             focusRow.onSwipeRight = null
             focusRow.onSwipeLeft = null
         }
@@ -189,13 +284,19 @@ class MainActivity : Activity() {
         val now = System.currentTimeMillis()
         val open = tasks.filter { it.status == "open" }
         val snoozed = { t: BoardTask -> (parseIso(t.snoozedUntil) ?: 0L) > now }
+        // Groups (issue #12), in queue order. The filter only shows with 2+.
+        val groups = open.sortedBy { it.position }.mapNotNull { it.group }.distinct()
+        if (groupFilter != null && groupFilter !in groups) groupFilter = null
+        showGroupFilter(groups)
+        val inFilter = { t: BoardTask -> groupFilter == null || t.group == groupFilter }
         fill(
             R.id.list_then, R.id.label_then, Kind.OPEN,
-            open.filter { !snoozed(it) && it.id != focus?.id }.sortedBy { it.position },
+            open.filter { !snoozed(it) && it.id != focus?.id && inFilter(it) }.sortedBy { it.position },
+            grouped = groups.isNotEmpty() && groupFilter == null,
         )
         fill(
             R.id.list_later, R.id.label_later, Kind.LATER,
-            open.filter(snoozed).sortedBy { parseIso(it.snoozedUntil) },
+            open.filter { snoozed(it) && inFilter(it) }.sortedBy { parseIso(it.snoozedUntil) },
         )
         fill(
             R.id.list_done, R.id.label_done, Kind.DONE,
@@ -229,44 +330,93 @@ class MainActivity : Activity() {
         val inflater = LayoutInflater.from(this)
         // Newest day first; each day's label comes from its first task.
         for ((_, items) in earlier.groupBy { it.second }.toSortedMap(compareByDescending { it })) {
-            val dayLabel = TextView(this).apply {
-                text = dayLabel(items.first().first.completedAt)
-                setTextColor(getColor(R.color.mb_muted))
-                textSize = 13f
-                setPadding(dp(4), dp(if (list.childCount == 0) 6 else 14), 0, 0)
-            }
-            list.addView(dayLabel)
+            list.addView(subTitle(dayLabel(items.first().first.completedAt), first = list.childCount == 0))
+            val card = newListCard(list)
             for ((task, _) in items.sortedBy { parseIso(it.first.completedAt) }) {
-                val row = inflater.inflate(R.layout.item_task, list, false) as SwipeRow
+                val row = inflater.inflate(R.layout.item_task, card, false) as SwipeRow
                 row.findViewById<TextView>(R.id.task_title).apply {
                     text = task.title
                     alpha = 0.7f
                 }
-                row.findViewById<View>(R.id.task_row).setOnClickListener { openTask(task) }
-                list.addView(row)
+                row.findViewById<View>(R.id.task_row).onTap { openTask(task) }
+                addCardRow(card, row)
             }
         }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
+    /** A group or day name above its card: sentence case, muted. */
+    private fun subTitle(text: String, first: Boolean) = TextView(this).apply {
+        this.text = text
+        setTextColor(getColor(R.color.mb_muted))
+        textSize = 14f
+        setTypeface(typeface, Typeface.BOLD)
+        setPadding(dp(8), dp(if (first) 0 else 16), 0, dp(8))
+    }
+
     /** "Too big?" (issue #7): Later used twice since the step last changed. */
     private fun tooBig(task: BoardTask): Boolean = task.status == "open" && task.snoozeCount >= 2
 
     private fun openTask(task: BoardTask, shrink: Boolean = false) {
-        startActivity(TaskActivity.intent(this, task.id, shrink))
+        startActivity(TaskActivity.intent(this, task, shrink))
     }
 
     private enum class Kind { OPEN, LATER, DONE }
 
-    private fun fill(listId: Int, labelId: Int, kind: Kind, tasks: List<BoardTask>) {
+    /** All / one chip per group; tapping one filters Then and Later. */
+    private fun showGroupFilter(groups: List<String>) {
+        val bar = findViewById<View>(R.id.group_filter)
+        val chips = findViewById<LinearLayout>(R.id.group_chips)
+        chips.removeAllViews()
+        if (groups.size < 2) {
+            bar.visibility = View.GONE
+            return
+        }
+        bar.visibility = View.VISIBLE
+        for (name in listOf<String?>(null) + groups) {
+            val selected = name == groupFilter
+            chips.addView(TextView(this).apply {
+                text = name ?: getString(R.string.group_all)
+                gravity = Gravity.CENTER
+                textSize = 14f
+                setPadding(dp(16), 0, dp(16), 0)
+                background = getDrawable(if (selected) R.drawable.mb_chip_selected_inset else R.drawable.mb_chip_tonal_inset)
+                setTextColor(getColor(if (selected) R.color.mb_on_primary else R.color.mb_on_surface))
+                pressable()
+                onTap {
+                    groupFilter = name
+                    board?.let { render(it, tasks) }
+                }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(6) })
+        }
+    }
+
+    private fun fill(listId: Int, labelId: Int, kind: Kind, tasks: List<BoardTask>, grouped: Boolean = false) {
         val list = findViewById<LinearLayout>(listId)
         list.removeAllViews()
         findViewById<View>(labelId).visibility = if (tasks.isEmpty()) View.GONE else View.VISIBLE
         val inflater = LayoutInflater.from(this)
-        for (task in tasks) {
-            val row = inflater.inflate(R.layout.item_task, list, false) as SwipeRow
-            styleSwipe(row, R.dimen.mb_app_row_radius)
+        // Grouped: each group under its heading, groups in queue order,
+        // ungrouped tasks last under "Tasks".
+        val ordered = if (grouped) {
+            tasks.groupBy { it.group }.entries.sortedWith(compareBy({ it.key == null }, { e -> e.value.minOf { it.position } }))
+                .flatMap { it.value }
+        } else {
+            tasks
+        }
+        // One card per group (or one for the whole section), rows inside
+        // with thin dividers, like the Clock app's alarm list.
+        var lastGroup: String? = null
+        var card: LinearLayout? = null
+        for (task in ordered) {
+            if (card == null || (grouped && task.group != lastGroup)) {
+                if (grouped) list.addView(subTitle(task.group ?: getString(R.string.group_none), first = card == null))
+                card = newListCard(list)
+                lastGroup = task.group
+            }
+            val row = inflater.inflate(R.layout.item_task, card, false) as SwipeRow
+            styleSwipe(row, 0f)
             val title = row.findViewById<TextView>(R.id.task_title)
             title.text = task.title
             val detail = task.firstStep?.let { getString(R.string.start_with, it) } ?: task.detail
@@ -274,16 +424,24 @@ class MainActivity : Activity() {
                 text = detail
                 visibility = if (detail.isNullOrEmpty() || kind == Kind.DONE) View.GONE else View.VISIBLE
             }
-            row.findViewById<TextView>(R.id.task_when).text = when (kind) {
+            row.findViewById<TextView>(R.id.task_when).showRowWhen(task, when (kind) {
                 Kind.OPEN -> formatWhen(task.planAt ?: task.dueAt)
                 Kind.LATER -> getString(R.string.back_at, formatWhen(task.snoozedUntil))
                 Kind.DONE -> ""
+            })
+            row.findViewById<TextView>(R.id.task_estimate).apply {
+                if (kind == Kind.DONE) visibility = View.GONE else showEstimateChip(task)
             }
             row.findViewById<View>(R.id.task_too_big).apply {
                 visibility = if (tooBig(task)) View.VISIBLE else View.GONE
-                setOnClickListener { openTask(task, shrink = true) }
+                onTap { openTask(task, shrink = true) }
             }
-            row.findViewById<View>(R.id.task_row).setOnClickListener { openTask(task) }
+            row.findViewById<View>(R.id.task_open).apply {
+                val url = task.url
+                visibility = if (url != null && kind != Kind.DONE) View.VISIBLE else View.GONE
+                onTap { url?.let { openLink(this@MainActivity, it) } }
+            }
+            row.findViewById<View>(R.id.task_row).onTap { openTask(task) }
             if (kind == Kind.DONE) {
                 title.alpha = 0.55f
                 row.findViewById<TextView>(R.id.swipe_label_start).setText(R.string.undo)
@@ -296,14 +454,15 @@ class MainActivity : Activity() {
                 showMenu(task)
                 true
             }
-            list.addView(row)
+            addCardRow(card, row)
         }
     }
 
-    private fun styleSwipe(row: SwipeRow, radius: Int) {
+    /** Swipe colours; rows in a card get radius 0 (the card rounds them). */
+    private fun styleSwipe(row: SwipeRow, radius: Float) {
         row.rightColor = getColor(R.color.mb_primary)
         row.leftColor = getColor(R.color.mb_inset)
-        row.cornerRadius = resources.getDimension(radius)
+        row.cornerRadius = radius
     }
 
     // --- Actions -------------------------------------------------------------
@@ -311,16 +470,29 @@ class MainActivity : Activity() {
     private fun complete(task: BoardTask) {
         markHintSeen()
         PlanReminderReceiver.cancel(this, task.id)
-        runAction({ t -> ApiClient.completeTask(t, task.id) }) {
-            val count = (board?.doneToday ?: 0) + 1
-            showUndoBar(getString(R.string.done_feedback, count), task)
+        val count = (board?.doneToday ?: 0) + 1
+        val now = toIso(System.currentTimeMillis())
+        optimistic { b, ts ->
+            val nts = ts.map { if (it.id == task.id) it.copy(status = "done", completedAt = now) else it }
+            val nb = if (b.focus?.id == task.id) {
+                b.copy(focus = b.next, next = null, upcoming = b.upcoming.filter { it.id != b.next?.id }, doneToday = count)
+            } else {
+                b.copy(doneToday = count)
+            }
+            nb to nts
         }
+        showUndoBar(getString(R.string.done_feedback, count), task)
+        runAction { t -> ApiClient.completeTask(t, task.id) }
     }
 
     private fun reopen(task: BoardTask) {
-        runAction({ t -> ApiClient.reopenTask(t, task.id) }) {
-            showUndoBar(getString(R.string.undone), null)
+        optimistic { b, ts ->
+            val wasToday = isToday(task.completedAt)
+            val nb = b.copy(doneToday = if (wasToday) maxOf(0, b.doneToday - 1) else b.doneToday)
+            nb to ts.map { if (it.id == task.id) it.copy(status = "open", completedAt = null) else it }
         }
+        showUndoBar(getString(R.string.undone), null)
+        runAction { t -> ApiClient.reopenTask(t, task.id) }
     }
 
     /** Quick-add (issue #6): the task lands at the end of the queue. */
@@ -365,10 +537,21 @@ class MainActivity : Activity() {
 
     private fun snooze(task: BoardTask, choice: LaterChoice) {
         val until = choice.at()
+        val untilIso = toIso(until)
         PlanReminderReceiver.cancel(this, task.id)
-        runAction({ t -> ApiClient.snoozeTask(t, task.id, until) }) {
-            showUndoBar(getString(R.string.later_feedback, formatWhen(toIso(until))), null)
+        optimistic { b, ts ->
+            val nts = ts.map {
+                if (it.id == task.id) it.copy(snoozedUntil = untilIso, planAt = untilIso, snoozeCount = it.snoozeCount + 1) else it
+            }
+            val nb = if (b.focus?.id == task.id) {
+                b.copy(focus = b.next, next = null, upcoming = b.upcoming.filter { it.id != b.next?.id })
+            } else {
+                b
+            }
+            nb to nts
         }
+        showUndoBar(getString(R.string.later_feedback, formatWhen(untilIso)), null)
+        runAction { t -> ApiClient.snoozeTask(t, task.id, until) }
     }
 
     /** Long-press: the same actions as the gestures, in the bottom sheet. */
@@ -387,9 +570,10 @@ class MainActivity : Activity() {
         sheet.show()
     }
 
-    /** Calls the API, then reloads the app and refreshes the widget (and
-     *  with it the icon shortcuts and reminders). */
-    private fun runAction(call: (String) -> Boolean, onOk: () -> Unit) {
+    /** Calls the API (the screen already shows the result), then reloads
+     *  the real state and refreshes the widget, icon shortcuts and reminders.
+     *  A failure says so and the reload puts things back. */
+    private fun runAction(call: (String) -> Boolean) {
         val t = token ?: return
         scope.launch {
             val ok = try {
@@ -400,26 +584,36 @@ class MainActivity : Activity() {
             } catch (_: Exception) {
                 false
             }
-            if (ok) onOk() else Toast.makeText(this@MainActivity, R.string.action_failed, Toast.LENGTH_SHORT).show()
+            if (!ok) {
+                undoBar.visibility = View.GONE
+                Toast.makeText(this@MainActivity, R.string.action_failed, Toast.LENGTH_SHORT).show()
+            }
             loadAll()
             WidgetUpdater.requestRefresh(this@MainActivity)
         }
     }
 
-    /** "✓ Done. 2 today. [Undo]" under the focus card for a few seconds. */
+    /** "✓ Done. 2 today. [Undo]" floating at the bottom for a few seconds. */
     private fun showUndoBar(text: String, undoTask: BoardTask?) {
         undoBar.removeCallbacks(hideUndo)
         undoText.text = text
         if (undoTask != null) {
             undoButton.visibility = View.VISIBLE
-            undoButton.setOnClickListener {
+            undoButton.onTap {
                 undoBar.visibility = View.GONE
                 reopen(undoTask)
             }
         } else {
             undoButton.visibility = View.GONE
         }
-        undoBar.visibility = View.VISIBLE
+        // Slides up into place like a snackbar (only when it wasn't showing).
+        if (undoBar.visibility != View.VISIBLE) {
+            undoBar.alpha = 0f
+            undoBar.translationY = dp(16).toFloat()
+            undoBar.visibility = View.VISIBLE
+        }
+        undoBar.animate().cancel()
+        undoBar.animate().alpha(1f).translationY(0f).setDuration(180).start()
         undoBar.postDelayed(hideUndo, UNDO_MS)
     }
 
@@ -447,11 +641,13 @@ class MainActivity : Activity() {
     private fun showTokenBox() {
         tokenBox.visibility = View.VISIBLE
         boardBox.visibility = View.GONE
+        findViewById<View>(R.id.btn_add_task).visibility = View.GONE
     }
 
     private fun showBoard() {
         tokenBox.visibility = View.GONE
         boardBox.visibility = View.VISIBLE
+        findViewById<View>(R.id.btn_add_task).visibility = View.VISIBLE
         askForNotificationsOnce()
     }
 
@@ -517,13 +713,14 @@ class MainActivity : Activity() {
     private fun shortDate(day: String): String = try {
         val utc = TimeZone.getTimeZone("UTC")
         val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = utc }.parse(day)
-        SimpleDateFormat("EEE d MMM", Locale.UK).apply { timeZone = utc }.format(parsed!!)
+        SimpleDateFormat("EEEE d MMMM", Locale.UK).apply { timeZone = utc }.format(parsed!!)
     } catch (_: Exception) {
         day
     }
 
     private companion object {
         const val UI_PREFS = "muse_board_ui"
+        const val RENDERED = "rendered"
         const val TICK_MS = 420L
         const val UNDO_MS = 6_000L
     }

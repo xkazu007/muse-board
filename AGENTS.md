@@ -38,9 +38,13 @@ that glance is enough to start.
 | `first_step` | **Always set it.** The first physical action, doable in under 2 minutes, starting with a verb. "Open Coursera and press play". Max 140 characters, aim for under 40. No prerequisites hidden inside ("research X first" is a task, not a step). |
 | `plan_at` | **When** they will start. Set it for every task meant for today or tomorrow. The phone sends one reminder at this time. Local Casablanca time, no offset: `"2026-10-29T21:00"`. |
 | `plan_where` | **Where**, 1 to 3 words: "desk", "library", "bed". Max 40 characters. |
-| `due_at` | The real deadline, if there is one. Shown only when there is no plan. Same time format. |
+| `due_at` | The real deadline, if there is one. Same time format. Shows as a coloured chip once it's under a week away: neutral, then yellow (tomorrow), orange (today), deep orange once passed ("Was due…", never red). Only set real deadlines, or every task looks urgent. |
 | `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
+| `group` | Optional short label, up to 40 characters: "Coursera ML", "Manara", "NutriSynth", "Personal". The app groups its list by it and can filter to one group; the widget ignores it. Set it when the task clearly belongs to a stream of work. |
+| `blocks` | What the task's page shows under the first step: an ordered list of text, headings, buttons, checklist items and toggles (see "Blocks" below). Up to 40. The app's detail page and the web's "More" show them; the widget ignores them. |
+| `estimate_min` | How long the **whole task** realistically takes, in minutes (1 to 1440). Shown as a "~15 min" chip whose colour moves from green (quick, up to 15) through blue and violet to pink (over 90) on the widget, the app and the web. Set it when you can judge it; be honest rather than small, a true "~45 min" is easier to plan for than a hopeful "~10 min". `null` clears it. |
+| `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00
 at my desk I open Coursera"), the best-supported technique in the research
@@ -79,6 +83,44 @@ at my desk I open Coursera"), the best-supported technique in the research
   them as Casablanca time. Morocco has been on UTC+0 all year since
   2026-09-20, so `+01:00` is wrong.
 
+### Blocks: the task's page
+
+`blocks` lets you lay out a task's page: what to read, what to click, what to
+tick. Each block is an object with a `type`:
+
+| Type | Fields | Shows as |
+|---|---|---|
+| `heading` | `text` (≤ 80) | A bold line that starts a section |
+| `text` | `text` (≤ 2000) | A paragraph; links in it are tappable |
+| `button` | `label` (≤ 40), `url` (http/https) | A full-width button that opens the link |
+| `check` | `text` (≤ 200), `done` (true/false, default false) | A checklist item the owner ticks; the tick is saved |
+| `toggle` | `text` (≤ 120), `body` (≤ 2000) | A line that expands to show `body` when tapped |
+
+How to use them:
+
+- **The first step stays the main thing.** Blocks are for after it: the
+  next small moves, the links, the context. Don't repeat the first step.
+- **Checks are small steps**, each under 2 minutes, 3 to 7 of them. When
+  they're all ticked, the task is probably done or needs a new first step.
+- **Buttons are destinations**: "Open lesson 2", "Join Zoom", "Open the
+  brief". One per place, labels that start with a verb. The task's `url`
+  is still its main link; a button for the same place is redundant.
+- **Toggles hold what's useful but not needed to start**: why it matters,
+  background, a long how-to. Keeps the page short.
+- **Sending `blocks` replaces the whole list.** Read the task first and
+  keep the owner's ticks (`done`) on items you keep. `null` or `[]` clears.
+- Unknown types are skipped by the app, so new kinds can be added later
+  without breaking old installs.
+
+```json
+"blocks": [
+  { "type": "button", "label": "Open lesson 2", "url": "https://www.coursera.org/learn/machine-learning" },
+  { "type": "check", "text": "Watch the first 3 minutes" },
+  { "type": "check", "text": "Write one line about what regression is" },
+  { "type": "toggle", "text": "Why this one first", "body": "It is 7 minutes and unlocks the week 2 quiz." }
+]
+```
+
 ### Recipes
 
 ```bash
@@ -94,12 +136,20 @@ curl -s -H "$AUTH" -H 'Content-Type: application/json' -X POST $B/api/tasks -d '
   "first_step": "Write 3 questions for Manal",
   "plan_at": "2026-10-29T18:00",
   "plan_where": "desk",
+  "estimate_min": 20,
   "due_at": "2026-10-30T12:00"
 }'
 
 # Make it the focus, or fix a step or time
 curl -s -H "$AUTH" -H 'Content-Type: application/json' -X PATCH $B/api/tasks/12 \
   -d '{"position": 0, "first_step": "Open the doc and write one sentence"}'
+
+# Lay out its page (replaces any blocks it had)
+curl -s -H "$AUTH" -H 'Content-Type: application/json' -X PATCH $B/api/tasks/12 -d '{"blocks": [
+  {"type": "button", "label": "Open the brief", "url": "https://docs.example.com/brief"},
+  {"type": "check", "text": "Read the first page"},
+  {"type": "check", "text": "Write 3 questions"}
+]}'
 
 # Undo a Done the owner didn't mean
 curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
@@ -121,7 +171,7 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 | `GET /health` | No auth |
 
 Errors: 400 with `{ error }` for bad input (blank title, too long, bad
-date-time), 401 for a bad token, 404 for an unknown id or wrong state.
+date-time, estimate outside 1 to 1440), 401 for a bad token, 404 for an unknown id or wrong state.
 
 ---
 
@@ -154,12 +204,22 @@ and the rules below.
   launcher applies updates on top of what is on screen, so anything you
   don't set keeps its old value.
 - **Instant feedback.** Done and Later update the widget from `BoardCache`
-  before the network call (`WidgetUpdater.showOptimistic`). Keep any new
-  action this fast.
+  before the network call (`WidgetUpdater.showOptimistic`). The app does the
+  same (`MainActivity.optimistic`), paints from the cached board and task
+  list before fetching, fetches both in parallel, and redraws only when the
+  data changed. The detail page opens with the task it was given. Keep any
+  new screen or action this fast: never a blank screen waiting on the
+  network, never a toast for being offline.
+- **Touch targets** are 48dp (a smaller visible pill sits inside an inset
+  drawable, e.g. `mb_pill_tonal_inset`).
 - **Version** lives in `android/gradle.properties`. Bump `versionCode` for
   every APK the owner will install.
 - **Design** comes from `docs/design-system.md`: colour tokens, sizes,
   copy rules. Web and Android share the same tokens.
+- **Feel native.** Taps go through `View.onTap` (haptic tick) and tappable
+  views get `animator/mb_press` (press-in); lists are cards of rows with
+  hairline dividers (`newListCard` / `addCardRow`); no small caps labels.
+  Plus Jakarta Sans comes from the theme; widget TextViews set it themselves.
 
 ### Run and check
 

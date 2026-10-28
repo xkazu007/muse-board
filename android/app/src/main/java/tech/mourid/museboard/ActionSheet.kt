@@ -35,7 +35,7 @@ class ActionSheet(private val activity: Activity, title: String, subtitle: Strin
         row.findViewById<ImageView>(R.id.sheet_icon).setImageResource(icon)
         row.findViewById<TextView>(R.id.sheet_label).text = label
         row.findViewById<TextView>(R.id.sheet_hint).text = hint.orEmpty()
-        row.setOnClickListener {
+        row.onTap {
             chose = true
             dialog.dismiss()
             action()

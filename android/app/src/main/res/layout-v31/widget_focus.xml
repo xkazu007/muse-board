@@ -34,21 +34,91 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <!-- Deadline chip: one per colour, the code shows the right one -->
                 <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_due_overdue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/mb_chip_due_overdue"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_due_overdue"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_due_today"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/mb_chip_due_today"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_due_today"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_due_tomorrow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/mb_chip_due_tomorrow"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_due_tomorrow"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_due_week"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/mb_chip_due_week"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_due_week"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_meta"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    android:letterSpacing="0.08"
                     android:maxLines="1"
-                    android:textAllCaps="true"
                     android:textColor="@color/mb_muted"
-                    android:textSize="11sp" />
+                    android:textSize="13sp" />
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -59,6 +129,7 @@
             </LinearLayout>
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_step"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -70,15 +141,94 @@
                 android:textSize="21sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/mb_task"
+            <!-- Task title, then the estimate chip at the end (cool colours by
+                 length; one view per colour, the code shows the right one) -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/mb_muted"
-                android:textSize="13sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_task"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/mb_muted"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_est_quick"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/mb_chip_est_quick"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_est_quick"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_est_short"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/mb_chip_est_short"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_est_short"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_est_long"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/mb_chip_est_long"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_est_long"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_est_big"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/mb_chip_est_big"
+                    android:maxLines="1"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/mb_est_big"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <!-- Then line; after a Done it becomes "✓ Done. 2 today." with
                  an Undo next to it (32dp tall to stay tappable). -->
@@ -93,6 +243,7 @@
                 android:visibility="gone">
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_then"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -102,7 +253,23 @@
                     android:textColor="@color/mb_muted"
                     android:textSize="12sp" />
 
+                <!-- Go-to link of the focus task (issue #12) -->
                 <TextView
+                    android:fontFamily="@font/jakarta"
+                    android:id="@+id/mb_open"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/open_link_short"
+                    android:textColor="@color/mb_accent"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:fontFamily="@font/jakarta"
                     android:id="@+id/mb_undo"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
@@ -110,7 +277,7 @@
                     android:paddingStart="10dp"
                     android:paddingEnd="10dp"
                     android:text="@string/undo"
-                    android:textColor="@color/mb_primary"
+                    android:textColor="@color/mb_accent"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
@@ -126,6 +293,7 @@
 
             <!-- Android 12+: a real CheckBox (the system animates the tick). -->
             <CheckBox
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_check"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
@@ -135,6 +303,7 @@
                 android:visibility="gone" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_btn_later"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
@@ -162,6 +331,7 @@
         android:visibility="gone">
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_1"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -174,6 +344,7 @@
             android:visibility="gone" />
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_2"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -187,6 +358,7 @@
             android:visibility="gone" />
 
         <TextView
+            android:fontFamily="@font/jakarta"
             android:id="@+id/mb_later_3"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -224,6 +396,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_1_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -234,6 +407,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_1_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -252,6 +426,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_2_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -262,6 +437,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_2_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -280,6 +456,7 @@
             android:visibility="gone">
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_3_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -290,6 +467,7 @@
                 android:textSize="14sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:id="@+id/mb_up_3_when"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

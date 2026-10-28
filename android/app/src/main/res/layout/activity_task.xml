@@ -100,6 +100,57 @@
             android:textColorHint="@color/mb_muted"
             android:textSize="18sp" />
 
+        <!-- Blocks Muse writes (text, buttons, checks, toggles), built by
+             TaskBlocks -->
+        <LinearLayout
+            android:id="@+id/task_blocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <TextView
+            style="@style/MuseBoard.SectionLabel"
+            android:layout_marginTop="20dp"
+            android:text="@string/detail_notes"
+            android:visibility="visible" />
+
+        <EditText
+            android:id="@+id/task_notes_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/mb_row_bg"
+            android:gravity="top|start"
+            android:hint="@string/detail_notes_hint"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="4000"
+            android:minHeight="120dp"
+            android:paddingStart="18dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="14dp"
+            android:textColor="@color/mb_on_surface"
+            android:textColorHint="@color/mb_muted"
+            android:textSize="15sp" />
+
+        <!-- "See more": long notes start folded to 4 lines -->
+        <TextView
+            android:id="@+id/task_notes_more"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/mb_ripple_rounded"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:text="@string/see_more"
+            android:textColor="@color/mb_accent"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <!-- When / Where / Due -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -132,6 +183,29 @@
                     android:contentDescription="@string/detail_clear_when" />
             </LinearLayout>
 
+            <!-- Time estimate: tap for a few common lengths -->
+            <LinearLayout
+                android:id="@+id/task_estimate_row"
+                style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_timer24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_estimate" />
+
+                <TextView
+                    android:id="@+id/task_estimate_value"
+                    style="@style/MuseBoard.PropertyValue" />
+
+                <ImageView
+                    android:id="@+id/task_estimate_clear"
+                    style="@style/MuseBoard.PropertyClear"
+                    android:contentDescription="@string/detail_clear_estimate" />
+            </LinearLayout>
+
             <LinearLayout style="@style/MuseBoard.PropertyRow">
 
                 <ImageView
@@ -153,6 +227,73 @@
                     android:importantForAutofill="no"
                     android:inputType="text"
                     android:maxLength="40"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/mb_on_surface"
+                    android:textColorHint="@color/mb_muted"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <!-- Go-to link (issue #12) -->
+            <LinearLayout style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_link24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_link" />
+
+                <EditText
+                    android:id="@+id/task_link_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical|end"
+                    android:hint="@string/detail_link_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:paddingEnd="4dp"
+                    android:textColor="@color/mb_on_surface"
+                    android:textColorHint="@color/mb_muted"
+                    android:textSize="15sp" />
+
+                <ImageView
+                    android:id="@+id/task_link_open"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/mb_ripple_rounded"
+                    android:contentDescription="@string/open_link"
+                    android:scaleType="center"
+                    android:src="@drawable/mb_ic_link24"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Group (issue #12) -->
+            <LinearLayout style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_group24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_group" />
+
+                <EditText
+                    android:id="@+id/task_group_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical|end"
+                    android:hint="@string/detail_group_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textCapWords"
+                    android:maxLength="40"
+                    android:maxLines="1"
                     android:paddingEnd="12dp"
                     android:textColor="@color/mb_on_surface"
                     android:textColorHint="@color/mb_muted"
@@ -183,30 +324,10 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/task_links_label"
             style="@style/MuseBoard.SectionLabel"
             android:layout_marginTop="20dp"
-            android:text="@string/detail_notes"
-            android:visibility="visible" />
-
-        <EditText
-            android:id="@+id/task_notes_edit"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/mb_row_bg"
-            android:gravity="top|start"
-            android:hint="@string/detail_notes_hint"
-            android:importantForAutofill="no"
-            android:inputType="textCapSentences|textMultiLine"
-            android:maxLength="4000"
-            android:minHeight="120dp"
-            android:paddingStart="18dp"
-            android:paddingTop="14dp"
-            android:paddingEnd="18dp"
-            android:paddingBottom="14dp"
-            android:textColor="@color/mb_on_surface"
-            android:textColorHint="@color/mb_muted"
-            android:textSize="15sp" />
+            android:text="@string/detail_links" />
 
         <!-- Links found in the notes, one tappable row each -->
         <LinearLayout

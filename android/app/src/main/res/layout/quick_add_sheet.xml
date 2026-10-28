@@ -64,7 +64,7 @@
         <TextView
             android:id="@+id/add_task_when"
             android:layout_width="wrap_content"
-            android:layout_height="44dp"
+            android:layout_height="48dp"
             android:background="@drawable/mb_pill_tonal"
             android:drawablePadding="8dp"
             android:drawableStart="@drawable/mb_ic_clock24"
@@ -79,7 +79,7 @@
             android:id="@+id/add_task_where"
             style="@style/MuseBoard.Field"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="48dp"
             android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:hint="@string/add_hint_where"
@@ -87,6 +87,25 @@
             android:inputType="text"
             android:maxLength="40" />
     </LinearLayout>
+
+    <!-- Optional time estimate: one chip at a time, tap again to clear -->
+    <LinearLayout
+        android:id="@+id/add_task_estimate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal" />
+
+    <EditText
+        android:id="@+id/add_task_link"
+        style="@style/MuseBoard.Field"
+        android:layout_height="48dp"
+        android:layout_marginTop="10dp"
+        android:hint="@string/add_hint_link"
+        android:importantForAutofill="no"
+        android:inputType="textUri"
+        android:maxLines="1" />
 
     <TextView
         android:id="@+id/add_task_error"
@@ -105,7 +124,7 @@
         android:layout_marginTop="16dp"
         android:background="@drawable/mb_button_primary"
         android:enabled="false"
-        android:stateListAnimator="@null"
+        android:stateListAnimator="@animator/mb_press"
         android:text="@string/add_save"
         android:textAllCaps="false"
         android:textColor="@color/mb_on_primary"

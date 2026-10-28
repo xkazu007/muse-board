@@ -29,18 +29,18 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:text="@string/preview_meta"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    android:letterSpacing="0.08"
                     android:maxLines="1"
-                    android:textAllCaps="true"
                     android:textColor="@color/mb_muted"
-                    android:textSize="11sp" />
+                    android:textSize="13sp" />
 
                 <TextView
+                    android:fontFamily="@font/jakarta"
                     android:text="@string/preview_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -51,6 +51,7 @@
             </LinearLayout>
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -62,6 +63,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:text="@string/preview_task"
                     android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -72,6 +74,7 @@
                 android:textSize="13sp" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:text="@string/preview_then"
                     android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -96,6 +99,7 @@
                 android:src="@drawable/mb_check_off" />
 
             <TextView
+                android:fontFamily="@font/jakarta"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
                 android:layout_marginTop="6dp"

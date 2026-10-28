@@ -1,5 +1,6 @@
 package tech.mourid.museboard
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -25,6 +26,15 @@ data class BoardTask(
     val completedAt: String? = null,
     /** Times "Later" was used since the first step last changed. */
     val snoozeCount: Int = 0,
+    /** Go-to link: where the first step happens. */
+    val url: String? = null,
+    /** Optional group label ("Coursera ML"); the app's list groups by it. */
+    val group: String? = null,
+    /** The detail page's blocks (text, buttons, checks…), as JSON array
+     *  text; null when there are none. See TaskBlocks. */
+    val blocks: String? = null,
+    /** Realistic minutes for the whole task ("~15 min"); null = not set. */
+    val estimateMin: Int? = null,
 )
 
 data class BoardResponse(
@@ -60,6 +70,10 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     snoozedUntil = obj.stringOrNull("snoozed_until"),
     completedAt = obj.stringOrNull("completed_at"),
     snoozeCount = obj.optInt("snooze_count", 0),
+    url = obj.stringOrNull("url"),
+    group = obj.stringOrNull("group"),
+    blocks = obj.optJSONArray("blocks")?.takeIf { it.length() > 0 }?.toString(),
+    estimateMin = if (obj.isNull("estimate_min")) null else obj.optInt("estimate_min").takeIf { it > 0 },
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -69,6 +83,28 @@ private fun JSONObject.tasks(key: String): List<BoardTask> {
     val arr = optJSONArray(key) ?: return emptyList()
     return (0 until arr.length()).map { parseTask(arr.getJSONObject(it)) }
 }
+
+/** The `{ tasks: [...] }` body of GET /api/tasks. */
+fun parseTasks(json: String): List<BoardTask> = JSONObject(json).tasks("tasks")
+
+/** The API's JSON for a task (to hand a task to another screen). */
+fun BoardTask.toJson(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("title", title)
+    .put("detail", detail ?: JSONObject.NULL)
+    .put("first_step", firstStep ?: JSONObject.NULL)
+    .put("due_at", dueAt ?: JSONObject.NULL)
+    .put("plan_at", planAt ?: JSONObject.NULL)
+    .put("plan_where", planWhere ?: JSONObject.NULL)
+    .put("position", position)
+    .put("status", status)
+    .put("snoozed_until", snoozedUntil ?: JSONObject.NULL)
+    .put("completed_at", completedAt ?: JSONObject.NULL)
+    .put("snooze_count", snoozeCount)
+    .put("url", url ?: JSONObject.NULL)
+    .put("group", group ?: JSONObject.NULL)
+    .put("blocks", blocks?.let { JSONArray(it) } ?: JSONArray())
+    .put("estimate_min", estimateMin ?: JSONObject.NULL)
 
 fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     date = obj.optString("date", ""),
@@ -150,16 +186,72 @@ fun formatDue(iso: String?): String {
     return casablanca("EEE d MMM, HH:mm").format(Date(t))
 }
 
-/** The focus line above the step: "Now · 21:00 · desk", else the
- *  deadline ("Now · by 23:59"). */
-fun focusMeta(task: BoardTask): String {
-    val parts = mutableListOf("Now")
-    when {
-        task.planAt != null -> parts.add(formatWhen(task.planAt))
-        task.dueAt != null -> parts.add("by " + formatWhen(task.dueAt))
+/** The plan above the step: "21:00 · desk" (no "Now", no deadline: the
+ *  deadline is its own coloured chip, see [Urgency]). "" without a plan. */
+fun planLine(task: BoardTask): String =
+    listOfNotNull(formatWhen(task.planAt).ifEmpty { null }, task.planWhere).joinToString(" · ")
+
+/**
+ * How close an open task's deadline is, for its coloured chip: warmer as it
+ * nears, never red (docs/design-system.md, "Urgency and size"). More than
+ * a week away, or no deadline: no chip.
+ */
+enum class Urgency(val color: Int, val chip: Int) {
+    OVERDUE(R.color.mb_due_overdue, R.drawable.mb_chip_due_overdue),
+    TODAY(R.color.mb_due_today, R.drawable.mb_chip_due_today),
+    TOMORROW(R.color.mb_due_tomorrow, R.drawable.mb_chip_due_tomorrow),
+    WEEK(R.color.mb_due_week, R.drawable.mb_chip_due_week);
+
+    companion object {
+        fun of(task: BoardTask, now: Long = System.currentTimeMillis()): Urgency? {
+            if (task.status != "open") return null
+            val due = parseIso(task.dueAt) ?: return null
+            if (due < now) return OVERDUE
+            return when (dayIndex(due) - dayIndex(now)) {
+                0L -> TODAY
+                1L -> TOMORROW
+                in 2L..6L -> WEEK
+                else -> null
+            }
+        }
     }
-    task.planWhere?.let { parts.add(it) }
-    return parts.filter { it.isNotEmpty() }.joinToString(" · ")
+}
+
+/** The deadline chip's text: "Due today 23:59", "Due tomorrow 00:59",
+ *  "Due Fri 12:00", "Was due 26 Oct". Neutral words, never "late". */
+fun dueLabel(task: BoardTask, now: Long = System.currentTimeMillis()): String {
+    val due = parseIso(task.dueAt) ?: return ""
+    val text = formatWhen(task.dueAt, now)
+    return when {
+        due < now -> "Was due $text"
+        dayIndex(due) == dayIndex(now) -> "Due today $text"
+        else -> "Due " + text.replaceFirst("Tomorrow", "tomorrow")
+    }
+}
+
+/** The estimate chip's colour: a cool scale, longer = further along it. */
+enum class TaskSize(val color: Int, val chip: Int) {
+    QUICK(R.color.mb_est_quick, R.drawable.mb_chip_est_quick),
+    SHORT(R.color.mb_est_short, R.drawable.mb_chip_est_short),
+    LONG(R.color.mb_est_long, R.drawable.mb_chip_est_long),
+    BIG(R.color.mb_est_big, R.drawable.mb_chip_est_big);
+
+    companion object {
+        /** Up to 15 min, 45, 90, longer. */
+        fun of(minutes: Int): TaskSize = when {
+            minutes <= 15 -> QUICK
+            minutes <= 45 -> SHORT
+            minutes <= 90 -> LONG
+            else -> BIG
+        }
+    }
+}
+
+/** 15 → "15 min", 60 → "1 h", 90 → "1 h 30". */
+fun formatMinutes(min: Int): String = when {
+    min < 60 -> "$min min"
+    min % 60 == 0 -> "${min / 60} h"
+    else -> "${min / 60} h ${(min % 60).toString().padStart(2, '0')}"
 }
 
 /** "NutriSynth prep, Fri 12:00" for the "Then:" line. */
