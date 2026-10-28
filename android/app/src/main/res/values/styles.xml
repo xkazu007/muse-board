@@ -30,4 +30,62 @@
         <item name="android:windowEnterAnimation">@anim/mb_sheet_in</item>
         <item name="android:windowExitAnimation">@anim/mb_sheet_out</item>
     </style>
+
+    <!-- Text field on a sheet or card. -->
+    <style name="MuseBoard.Field" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:background">@drawable/mb_field_bg</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:textColor">@color/mb_on_surface</item>
+        <item name="android:textColorHint">@color/mb_muted</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Task detail page: one property row (When / Where / Due). -->
+    <style name="MuseBoard.PropertyRow" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:background">@drawable/mb_ripple_rounded</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">4dp</item>
+    </style>
+
+    <style name="MuseBoard.PropertyIcon" parent="">
+        <item name="android:layout_width">22dp</item>
+        <item name="android:layout_height">22dp</item>
+        <item name="android:alpha">0.75</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="MuseBoard.PropertyLabel" parent="">
+        <item name="android:layout_width">72dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">14dp</item>
+        <item name="android:textColor">@color/mb_muted</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="MuseBoard.PropertyValue" parent="">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">end</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:textColor">@color/mb_on_surface</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="MuseBoard.PropertyClear" parent="">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:background">@drawable/mb_ripple_rounded</item>
+        <item name="android:scaleType">center</item>
+        <item name="android:src">@drawable/mb_ic_close24</item>
+        <item name="android:alpha">0.6</item>
+        <item name="android:visibility">gone</item>
+    </style>
 </resources>

@@ -96,6 +96,10 @@ class MainActivity : Activity() {
             board?.focus?.let { showMenu(it) }
             true
         }
+        findViewById<View>(R.id.focus_card).setOnClickListener { board?.focus?.let { openTask(it) } }
+        findViewById<View>(R.id.focus_too_big).setOnClickListener {
+            board?.focus?.let { openTask(it, shrink = true) }
+        }
 
         findViewById<Button>(R.id.token_save).setOnClickListener { saveToken() }
         findViewById<View>(R.id.btn_refresh).setOnClickListener { loadAll() }
@@ -106,6 +110,7 @@ class MainActivity : Activity() {
             WidgetUpdater.requestRefresh(this)
         }
         findViewById<Button>(R.id.btn_add_widget).setOnClickListener { requestPinWidget() }
+        findViewById<View>(R.id.btn_add_task).setOnClickListener { showQuickAdd() }
 
         token = TokenStore.get(this)
         if (token.isNullOrBlank()) showTokenBox() else showBoard()
@@ -161,6 +166,7 @@ class MainActivity : Activity() {
             focusTask.text = if (focus.firstStep != null) focus.title else focus.detail.orEmpty()
             focusCheck.visibility = View.VISIBLE
             focusLater.visibility = View.VISIBLE
+            findViewById<View>(R.id.focus_too_big).visibility = if (tooBig(focus)) View.VISIBLE else View.GONE
             focusRow.onSwipeRight = { complete(focus) }
             focusRow.onSwipeLeft = { askLater(focus, focusRow) }
         } else {
@@ -174,6 +180,7 @@ class MainActivity : Activity() {
             }
             focusCheck.visibility = View.GONE
             focusLater.visibility = View.GONE
+            findViewById<View>(R.id.focus_too_big).visibility = View.GONE
             focusRow.onSwipeRight = null
             focusRow.onSwipeLeft = null
         }
@@ -195,6 +202,59 @@ class MainActivity : Activity() {
             tasks.filter { it.status == "done" && isToday(it.completedAt) }
                 .sortedByDescending { parseIso(it.completedAt) },
         )
+        fillWeek(tasks)
+    }
+
+    /**
+     * Weekly recap (issue #8): what got done earlier this week (Monday on),
+     * grouped by day, under a neutral count. No streaks, nothing about what
+     * wasn't done. Hidden until there is an earlier day to show.
+     */
+    private fun fillWeek(tasks: List<BoardTask>) {
+        val list = findViewById<LinearLayout>(R.id.list_week)
+        val label = findViewById<TextView>(R.id.label_week)
+        list.removeAllViews()
+        val today = dayOf(System.currentTimeMillis())
+        val weekStart = weekStartDay()
+        val thisWeek = tasks.filter { it.status == "done" }
+            .mapNotNull { t -> parseIso(t.completedAt)?.let { t to dayOf(it) } }
+            .filter { (_, day) -> day >= weekStart }
+        val earlier = thisWeek.filter { (_, day) -> day < today }
+        if (earlier.isEmpty()) {
+            label.visibility = View.GONE
+            return
+        }
+        label.text = getString(R.string.week_label, thisWeek.size)
+        label.visibility = View.VISIBLE
+        val inflater = LayoutInflater.from(this)
+        // Newest day first; each day's label comes from its first task.
+        for ((_, items) in earlier.groupBy { it.second }.toSortedMap(compareByDescending { it })) {
+            val dayLabel = TextView(this).apply {
+                text = dayLabel(items.first().first.completedAt)
+                setTextColor(getColor(R.color.mb_muted))
+                textSize = 13f
+                setPadding(dp(4), dp(if (list.childCount == 0) 6 else 14), 0, 0)
+            }
+            list.addView(dayLabel)
+            for ((task, _) in items.sortedBy { parseIso(it.first.completedAt) }) {
+                val row = inflater.inflate(R.layout.item_task, list, false) as SwipeRow
+                row.findViewById<TextView>(R.id.task_title).apply {
+                    text = task.title
+                    alpha = 0.7f
+                }
+                row.findViewById<View>(R.id.task_row).setOnClickListener { openTask(task) }
+                list.addView(row)
+            }
+        }
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    /** "Too big?" (issue #7): Later used twice since the step last changed. */
+    private fun tooBig(task: BoardTask): Boolean = task.status == "open" && task.snoozeCount >= 2
+
+    private fun openTask(task: BoardTask, shrink: Boolean = false) {
+        startActivity(TaskActivity.intent(this, task.id, shrink))
     }
 
     private enum class Kind { OPEN, LATER, DONE }
@@ -219,6 +279,11 @@ class MainActivity : Activity() {
                 Kind.LATER -> getString(R.string.back_at, formatWhen(task.snoozedUntil))
                 Kind.DONE -> ""
             }
+            row.findViewById<View>(R.id.task_too_big).apply {
+                visibility = if (tooBig(task)) View.VISIBLE else View.GONE
+                setOnClickListener { openTask(task, shrink = true) }
+            }
+            row.findViewById<View>(R.id.task_row).setOnClickListener { openTask(task) }
             if (kind == Kind.DONE) {
                 title.alpha = 0.55f
                 row.findViewById<TextView>(R.id.swipe_label_start).setText(R.string.undo)
@@ -256,6 +321,29 @@ class MainActivity : Activity() {
         runAction({ t -> ApiClient.reopenTask(t, task.id) }) {
             showUndoBar(getString(R.string.undone), null)
         }
+    }
+
+    /** Quick-add (issue #6): the task lands at the end of the queue. */
+    private fun showQuickAdd() {
+        val t = token ?: return
+        QuickAddSheet(this) { fields, onResult ->
+            scope.launch {
+                val ok = try {
+                    withContext(Dispatchers.IO) { ApiClient.createTask(t, fields) }
+                } catch (_: UnauthorizedException) {
+                    onTokenRejected()
+                    return@launch
+                } catch (_: Exception) {
+                    false
+                }
+                onResult(ok)
+                if (ok) {
+                    showUndoBar(getString(R.string.added), null)
+                    loadAll()
+                    WidgetUpdater.requestRefresh(this@MainActivity)
+                }
+            }
+        }.show()
     }
 
     /** "Later" asks when, in the bottom sheet; cancelling puts a swiped

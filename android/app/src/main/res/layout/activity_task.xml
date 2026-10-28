@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Task detail page (issue #5), Notion-style: every field is edited in
+     place and saves on its own. App only; the widget and web stay simple. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/mb_page"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="32dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/task_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/mb_ripple_rounded"
+                android:contentDescription="@string/back"
+                android:scaleType="center"
+                android:src="@drawable/mb_ic_back24" />
+
+            <TextView
+                android:id="@+id/task_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:paddingEnd="8dp"
+                android:textColor="@color/mb_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/task_title_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@null"
+            android:hint="@string/detail_hint_title"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="200"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:textColor="@color/mb_on_surface"
+            android:textColorHint="@color/mb_muted"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <!-- "Too big?" (issue #7): shown when opened to shrink the step -->
+        <TextView
+            android:id="@+id/task_shrink_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/mb_button_tonal"
+            android:paddingStart="16dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp"
+            android:text="@string/shrink_hint"
+            android:textColor="@color/mb_on_surface"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <TextView
+            style="@style/MuseBoard.SectionLabel"
+            android:layout_marginTop="20dp"
+            android:text="@string/detail_first_step"
+            android:visibility="visible" />
+
+        <EditText
+            android:id="@+id/task_step_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/mb_row_bg"
+            android:hint="@string/step_rule"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="140"
+            android:minHeight="56dp"
+            android:paddingStart="18dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="14dp"
+            android:textColor="@color/mb_on_surface"
+            android:textColorHint="@color/mb_muted"
+            android:textSize="18sp" />
+
+        <!-- When / Where / Due -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/mb_row_bg"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <LinearLayout
+                android:id="@+id/task_when_row"
+                style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_clock24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_when" />
+
+                <TextView
+                    android:id="@+id/task_when_value"
+                    style="@style/MuseBoard.PropertyValue" />
+
+                <ImageView
+                    android:id="@+id/task_when_clear"
+                    style="@style/MuseBoard.PropertyClear"
+                    android:contentDescription="@string/detail_clear_when" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_place24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_where" />
+
+                <EditText
+                    android:id="@+id/task_where_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical|end"
+                    android:hint="@string/detail_where_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLength="40"
+                    android:paddingEnd="12dp"
+                    android:textColor="@color/mb_on_surface"
+                    android:textColorHint="@color/mb_muted"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/task_due_row"
+                style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_flag24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_due" />
+
+                <TextView
+                    android:id="@+id/task_due_value"
+                    style="@style/MuseBoard.PropertyValue" />
+
+                <ImageView
+                    android:id="@+id/task_due_clear"
+                    style="@style/MuseBoard.PropertyClear"
+                    android:contentDescription="@string/detail_clear_due" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            style="@style/MuseBoard.SectionLabel"
+            android:layout_marginTop="20dp"
+            android:text="@string/detail_notes"
+            android:visibility="visible" />
+
+        <EditText
+            android:id="@+id/task_notes_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/mb_row_bg"
+            android:gravity="top|start"
+            android:hint="@string/detail_notes_hint"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="4000"
+            android:minHeight="120dp"
+            android:paddingStart="18dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="14dp"
+            android:textColor="@color/mb_on_surface"
+            android:textColorHint="@color/mb_muted"
+            android:textSize="15sp" />
+
+        <!-- Links found in the notes, one tappable row each -->
+        <LinearLayout
+            android:id="@+id/task_links"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/task_done"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:background="@drawable/mb_button_primary"
+                android:gravity="center"
+                android:text="@string/done"
+                android:textColor="@color/mb_on_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/task_later"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/mb_pill_tonal"
+                android:gravity="center"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:text="@string/later"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="16sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

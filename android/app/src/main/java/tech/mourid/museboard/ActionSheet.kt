@@ -2,12 +2,7 @@ package tech.mourid.museboard
 
 import android.app.Activity
 import android.app.Dialog
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -19,26 +14,18 @@ import android.widget.TextView
  */
 class ActionSheet(private val activity: Activity, title: String, subtitle: String? = null) {
 
-    private val dialog = Dialog(activity)
+    private val dialog: Dialog = bottomSheet(activity, R.layout.action_sheet)
     private val rows: LinearLayout
     private var onCancel: (() -> Unit)? = null
     private var chose = false
 
     init {
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.action_sheet)
         dialog.findViewById<TextView>(R.id.sheet_title).text = title
         dialog.findViewById<TextView>(R.id.sheet_subtitle).apply {
             text = subtitle
             visibility = if (subtitle.isNullOrEmpty()) View.GONE else View.VISIBLE
         }
         rows = dialog.findViewById(R.id.sheet_rows)
-        dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setGravity(Gravity.BOTTOM)
-            setWindowAnimations(R.style.MuseBoard_SheetAnimation)
-        }
         dialog.setOnDismissListener { if (!chose) onCancel?.invoke() }
     }
 

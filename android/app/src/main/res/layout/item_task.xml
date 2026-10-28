@@ -45,6 +45,21 @@
                 android:textColor="@color/mb_muted"
                 android:textSize="13sp"
                 android:visibility="gone" />
+
+            <!-- "Too big?" (issue #7): after two snoozes -->
+            <TextView
+                android:id="@+id/task_too_big"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/mb_pill_tonal"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/too_big"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="13sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <TextView

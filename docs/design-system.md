@@ -80,6 +80,25 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 - **Then line when the queue is empty**: "Next: <task>, <time>" for the next
   snoozed task coming back, so "All clear." never hides what's coming.
 
+## App screens
+
+- **Quick-add** (bottom sheet, from "Add a task" under the Then list):
+  title, first step (both required, the 2-minute rule written under the
+  field), When (the phone's own date and time pickers) and Where. Adds to
+  the end of the queue.
+- **Task detail page** (tap any task card): big editable title, first step,
+  When / Where / Due rows (tap to pick, × to clear), notes with each link
+  as a tappable row, Done (or Undo) and Later at the bottom. Everything
+  saves on its own: "Saving…" / "Saved" at the top right.
+- **Too big?** A small tonal chip on a task snoozed twice since its step
+  last changed. Opens the detail page with the first step focused and "Try
+  a first step that takes under 2 minutes." Neutral copy, never red.
+- **This week**: under Done today, "This week · N done" with earlier days'
+  completions grouped by day. A count of what moved, never what didn't: no
+  streaks, no misses.
+- **Web theme toggle**: Auto (follows the device) → Light → Dark, remembered
+  on that device, applied before the first paint.
+
 ## Native gestures
 
 Android widgets can't take long-press (the launcher owns it) or swipe, on
@@ -93,6 +112,7 @@ Samsung too. So each gesture lives where Android allows it:
 | App | Swipe a card right / left | Done (primary behind it) / Later (asks when) |
 | App | Long-press a card | Menu: Done, Later choices, or Undo |
 | App | Tick the ring | Same as the widget |
+| App | Tap a card | Opens the task's detail page |
 
 Haptics: a tick when a swipe crosses its threshold (gesture threshold
 haptics on Android 14+), a confirm on Done. Every Done in the app shows an

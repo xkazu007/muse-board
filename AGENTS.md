@@ -39,7 +39,7 @@ that glance is enough to start.
 | `plan_at` | **When** they will start. Set it for every task meant for today or tomorrow. The phone sends one reminder at this time. Local Casablanca time, no offset: `"2026-10-29T21:00"`. |
 | `plan_where` | **Where**, 1 to 3 words: "desk", "library", "bed". Max 40 characters. |
 | `due_at` | The real deadline, if there is one. Shown only when there is no plan. Same time format. |
-| `detail` | Optional context. Rarely shown. |
+| `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00
@@ -68,7 +68,13 @@ at my desk I open Coursera"), the best-supported technique in the research
   hour, tonight 20:00, tomorrow 09:00). The API hides the task until then
   and moves `plan_at` there. If the same task keeps getting moved, the first
   step is probably too big or the task is unclear: rewrite it smaller, or
-  ask.
+  ask. Every task carries `snooze_count` (Laters since its first step last
+  changed); at 2 the app shows "Too big? Make it smaller", and writing a new
+  `first_step` resets it to 0.
+- **The owner adds tasks too.** The app has a quick-add (title + first step,
+  optional when / where) and a detail page to edit any task. Tasks added
+  from the phone land at the end of the queue: give them a plan, a place or
+  a better position when you see them.
 - **Times are local.** Send date-times without an offset and the API reads
   them as Casablanca time. Morocco has been on UTC+0 all year since
   2026-09-20, so `+01:00` is wrong.
@@ -105,8 +111,10 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 |---|---|
 | `GET /api/board` | `{ date, focus, next, upcoming[≤3], plans[], doneToday }`, exactly what the widget renders |
 | `GET /api/tasks` | Every task, by position |
+| `GET /api/tasks/:id` | One task |
 | `POST /api/tasks` | Create. `title` required; any field above |
-| `PATCH /api/tasks/:id` | Edit any field above. `null` clears an optional one |
+| `PATCH /api/tasks/:id` | Edit any field above. `null` clears an optional one. A new `first_step` resets `snooze_count` |
+| `POST /api/tasks/:id` | Same as PATCH (for clients that can't send PATCH, like the Android app) |
 | `POST /api/tasks/:id/complete` | Done |
 | `POST /api/tasks/:id/reopen` | Undo a Done |
 | `POST /api/tasks/:id/snooze` | Later. `{ "until": "<date-time, under 14 days>" }` hides it until then and moves `plan_at` there. No body: until tomorrow 09:00 |

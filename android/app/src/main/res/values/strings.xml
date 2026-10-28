@@ -40,6 +40,43 @@
     <string name="menu_undo">Undo</string>
     <string name="menu_later">Later: %1$s</string>
 
+    <!-- Quick-add (issue #6) -->
+    <string name="add_task">Add a task</string>
+    <string name="add_title">New task</string>
+    <string name="add_hint_title">What is it?</string>
+    <string name="add_hint_step">First step</string>
+    <string name="step_rule">The first physical action, under 2 minutes, starting with a verb.</string>
+    <string name="add_when">When</string>
+    <string name="add_hint_where">Where</string>
+    <string name="add_save">Add</string>
+    <string name="add_failed">Couldn\'t add it. Check your connection.</string>
+    <string name="added">Added to the end of your queue.</string>
+
+    <!-- Task detail page (issue #5) -->
+    <string name="detail_hint_title">Title</string>
+    <string name="detail_first_step">First step</string>
+    <string name="detail_when">When</string>
+    <string name="detail_where">Where</string>
+    <string name="detail_where_hint">Add a place</string>
+    <string name="detail_due">Due</string>
+    <string name="detail_none">Not set</string>
+    <string name="detail_clear_when">Clear when</string>
+    <string name="detail_clear_due">Clear due date</string>
+    <string name="detail_notes">Notes</string>
+    <string name="detail_notes_hint">Anything useful: links, context, what done looks like.</string>
+    <string name="detail_saving">Saving…</string>
+    <string name="detail_saved">Saved</string>
+    <string name="detail_not_saved">Not saved. Check your connection.</string>
+    <string name="detail_title_empty">A title is needed to save it.</string>
+    <string name="detail_load_failed">Couldn\'t load this task.</string>
+
+    <!-- "Too big?" (issue #7) -->
+    <string name="too_big">Too big? Make it smaller</string>
+    <string name="shrink_hint">Try a first step that takes under 2 minutes.</string>
+
+    <!-- Weekly recap (issue #8) -->
+    <string name="week_label">This week · %1$d done</string>
+
     <!-- App icon long-press shortcuts -->
     <string name="shortcut_done">Done: %1$s</string>
     <string name="shortcut_later">Later: 1 hour</string>
