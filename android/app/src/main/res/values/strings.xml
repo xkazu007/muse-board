@@ -20,12 +20,18 @@
     <string name="widget_loading">Loading your board…</string>
     <string name="widget_tap_refresh">Tap to refresh.</string>
 
-    <!-- Later chooser -->
+    <!-- Later: the widget swaps Done for these choices (no popup); the app
+         shows them in a dialog with the times spelled out. -->
     <string name="later_title">Come back to it…</string>
     <string name="later_in_hour">In 1 hour</string>
     <string name="later_tonight">Tonight 20:00</string>
     <string name="later_tomorrow">Tomorrow 09:00</string>
+    <string name="later_chip_tonight">Tonight</string>
+    <string name="later_chip_tomorrow">Tomorrow</string>
+    <string name="back">Back</string>
     <string name="cancel">Cancel</string>
+    <string name="undone">Back on your board.</string>
+    <string name="next_plan">Next: %1$s</string>
 
     <!-- Plan reminders -->
     <string name="channel_plans">Plan reminders</string>

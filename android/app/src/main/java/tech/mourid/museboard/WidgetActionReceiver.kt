@@ -8,34 +8,54 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * Done (widget or reminder), Later (from [LaterActivity]) and refresh.
+ * Every widget tap (and the reminder's Done). Nothing here leaves the home
+ * screen:
  *
- * Done and Later update the widget first, from the cache, then call the
- * API off the main thread (goAsync). Success: a refresh brings the real
- * board. Failure: the widget goes back to the real board and says the
- * change wasn't saved.
+ * - Later / Back: swap Done for the time chips and back, from the cache.
+ * - Done, a Later chip, Undo: update the widget first, from the cache, then
+ *   call the API off the main thread (goAsync). Success: a refresh brings
+ *   the real board. Failure: back to the real board, saying so.
+ * - Refresh: fetch the board.
  */
 class WidgetActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getIntExtra(WidgetUpdater.EXTRA_TASK_ID, -1)
-        val untilMillis = intent.getLongExtra(WidgetUpdater.EXTRA_UNTIL, -1L)
-        val call: ((String) -> Boolean)? = when {
-            taskId <= 0 -> null
-            intent.action == WidgetUpdater.ACTION_DONE -> {
+        if (taskId <= 0) {
+            WidgetUpdater.requestRefresh(context)
+            return
+        }
+        val call: (String) -> Boolean = when (intent.action) {
+            WidgetUpdater.ACTION_LATER_SHOW -> {
+                WidgetUpdater.showLaterChoices(context, taskId)
+                return
+            }
+            WidgetUpdater.ACTION_LATER_CANCEL -> {
+                WidgetUpdater.showCached(context)
+                return
+            }
+            WidgetUpdater.ACTION_DONE -> {
                 PlanReminderReceiver.cancel(context, taskId)
                 WidgetUpdater.showOptimistic(context, taskId, done = true, untilMillis = null)
                 ({ token -> ApiClient.completeTask(token, taskId) })
             }
-            intent.action == WidgetUpdater.ACTION_SNOOZE && untilMillis > 0 -> {
-                WidgetUpdater.showOptimistic(context, taskId, done = false, untilMillis = untilMillis)
-                ({ token -> ApiClient.snoozeTask(token, taskId, untilMillis) })
+            WidgetUpdater.ACTION_SNOOZE -> {
+                val choice = intent.getStringExtra(WidgetUpdater.EXTRA_CHOICE)
+                    ?.let { name -> LaterChoice.values().firstOrNull { it.name == name } }
+                    ?: LaterChoice.TOMORROW
+                val until = choice.at()
+                WidgetUpdater.showOptimistic(context, taskId, done = false, untilMillis = until)
+                ({ token -> ApiClient.snoozeTask(token, taskId, until) })
             }
-            else -> null
-        }
-        if (call == null) {
-            WidgetUpdater.requestRefresh(context)
-            return
+            WidgetUpdater.ACTION_UNDO -> {
+                BoardCache.setNotice(context, context.getString(R.string.undone))
+                WidgetUpdater.showCached(context)
+                ({ token -> ApiClient.reopenTask(token, taskId) })
+            }
+            else -> {
+                WidgetUpdater.requestRefresh(context)
+                return
+            }
         }
 
         val pendingResult = goAsync()

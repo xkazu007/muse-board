@@ -17,6 +17,7 @@ object BoardCache {
     private const val KEY_BOARD = "board_json"
     private const val KEY_NOTICE = "notice"
     private const val KEY_NOTICE_UNTIL = "notice_until"
+    private const val KEY_UNDO_ID = "undo_id"
     private const val NOTICE_MS = 60_000L
 
     private fun prefs(context: Context): SharedPreferences =
@@ -39,10 +40,13 @@ object BoardCache {
         prefs(context).edit().clear().apply()
     }
 
-    fun setNotice(context: Context, text: String) {
+    /** Show [text] for a minute; with [undoTaskId] the widget offers Undo
+     *  (reopen that task) next to it for the same minute. */
+    fun setNotice(context: Context, text: String, undoTaskId: Int? = null) {
         prefs(context).edit()
             .putString(KEY_NOTICE, text)
             .putLong(KEY_NOTICE_UNTIL, System.currentTimeMillis() + NOTICE_MS)
+            .putInt(KEY_UNDO_ID, undoTaskId ?: -1)
             .apply()
     }
 
@@ -51,5 +55,11 @@ object BoardCache {
         val p = prefs(context)
         if (System.currentTimeMillis() > p.getLong(KEY_NOTICE_UNTIL, 0L)) return null
         return p.getString(KEY_NOTICE, null)
+    }
+
+    /** The task the current notice can undo, or null. */
+    fun undoTaskId(context: Context): Int? {
+        if (notice(context) == null) return null
+        return prefs(context).getInt(KEY_UNDO_ID, -1).takeIf { it > 0 }
     }
 }

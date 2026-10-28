@@ -23,15 +23,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Widget "Later": a small dialog over the home screen -->
-        <activity
-            android:name=".LaterActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
-
         <!-- True home-screen widget -->
         <receiver
             android:name=".MuseBoardWidget"
@@ -53,6 +44,9 @@
                 <action android:name="tech.mourid.museboard.ACTION_DONE" />
                 <action android:name="tech.mourid.museboard.ACTION_SNOOZE" />
                 <action android:name="tech.mourid.museboard.ACTION_REFRESH" />
+                <action android:name="tech.mourid.museboard.ACTION_LATER_SHOW" />
+                <action android:name="tech.mourid.museboard.ACTION_LATER_CANCEL" />
+                <action android:name="tech.mourid.museboard.ACTION_UNDO" />
             </intent-filter>
         </receiver>
 

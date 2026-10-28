@@ -55,13 +55,28 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
   line), the Then line (1 line).
 - **Done**: 60dp circle (64px web), `primary`, white check. The only filled
   element.
-- **Later**: plain text button, `muted`, 44dp tall. Opens the time chooser
-  (in 1 hour / tonight 20:00 before 19:00 / tomorrow 09:00).
+- **Later**: plain text button, `muted`, 44dp tall. It never opens a popup:
+  the widget itself swaps Done for three 44dp chips on `inset` (In 1 hour /
+  Tonight / Tomorrow; Tonight only before 19:00) and Later becomes Back. The
+  time is worked out when a chip is tapped. Tonight = 20:00, Tomorrow =
+  09:00. The app shows the same choices in a dialog.
 - **Then list** (widget at about 260dp tall and up, usually 4 rows, and on the web): up to 3
   rows, title left, short time right, on `inset`.
 - **Feedback line**: replaces the Then line for 60 s after an action: "✓
-  Done. 2 today." / "Moved. Reminder at 21:00." / "Couldn't save that. Try
-  again."
+  Done. 2 today." (with an **Undo**, 32dp, `primary`, for the same 60 s) /
+  "Moved. Reminder at 21:00." / "Back on your board." / "Couldn't save that.
+  Try again."
+- **Then line when the queue is empty**: "Next: <task>, <time>" for the next
+  snoozed task coming back, so "All clear." never hides what's coming.
+
+## Flow rules
+
+- Every widget tap stays on the home screen. Only tapping the card body opens
+  the app.
+- Every tap changes the widget at once (from the cache); the network catches
+  up after.
+- Every action that removes a task from view can be undone or says when it
+  comes back.
 
 ## Sizes (Android)
 

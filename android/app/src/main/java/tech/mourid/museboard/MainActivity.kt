@@ -231,11 +231,11 @@ class MainActivity : Activity() {
 
     /** "Later" asks when: the task comes back (and reminds) at that time. */
     private fun showLaterChoices(id: Int) {
-        val choices = laterChoices()
+        val choices = LaterChoice.offered()
         AlertDialog.Builder(this)
             .setTitle(R.string.later_title)
-            .setItems(choices.map { getString(it.first) }.toTypedArray()) { _, which ->
-                val until = choices[which].second
+            .setItems(choices.map { getString(it.label) }.toTypedArray()) { _, which ->
+                val until = choices[which].at()
                 runTaskAction(id) { t, taskId -> ApiClient.snoozeTask(t, taskId, until) }
             }
             .setNegativeButton(R.string.cancel, null)
