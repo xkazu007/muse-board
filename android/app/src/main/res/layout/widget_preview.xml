@@ -1,119 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget picker preview (previewLayout): widget_muse_board with sample
-     content, so the picker shows what the widget looks like in use. -->
+<!-- Widget picker preview (previewLayout): widget_focus at 4×2 with
+     sample content. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/widget_background"
+    android:layout_height="match_parent"
+    android:background="@drawable/mb_widget_bg"
+    android:gravity="center_vertical"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/widget_name_caps"
-            android:textColor="@color/accent"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
-        <TextView
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:text="@string/preview_meta"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:letterSpacing="0.08"
+                    android:maxLines="1"
+                    android:textAllCaps="true"
+                    android:textColor="@color/mb_muted"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:text="@string/preview_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:maxLines="1"
+                    android:textColor="@color/mb_muted"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="@string/preview_step"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:text="@string/preview_task"
+                    android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/mb_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:text="@string/preview_then"
+                    android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/mb_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/preview_date"
-            android:textColor="@color/muted"
-            android:textSize="12sp" />
+            android:layout_marginStart="12dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@drawable/mb_done_bg"
+                android:contentDescription="@string/done_label"
+                android:scaleType="center"
+                android:src="@drawable/mb_ic_check" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:gravity="center"
+                android:minWidth="60dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="@string/later"
+                android:textColor="@color/mb_muted"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:text="@string/preview_focus_title"
-        android:textColor="@color/text"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/preview_focus_detail"
-        android:textColor="@color/muted"
-        android:textSize="13sp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="horizontal">
-
-        <Button
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:background="@drawable/btn_done"
-            android:text="@string/done"
-            android:textAllCaps="false"
-            android:textColor="#ffffff"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/btn_ghost"
-            android:text="@string/not_now"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="15sp" />
-    </LinearLayout>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="10dp"
-        android:background="@color/border" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/up_next"
-        android:textColor="@color/muted"
-        android:textSize="11sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/preview_upcoming_1"
-        android:textColor="@color/text"
-        android:textSize="13sp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/preview_upcoming_2"
-        android:textColor="@color/text"
-        android:textSize="13sp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/preview_done_count"
-        android:textColor="@color/muted"
-        android:textSize="12sp" />
 
 </LinearLayout>

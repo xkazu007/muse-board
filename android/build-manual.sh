@@ -176,5 +176,6 @@ fi
 
 echo "== verify =="
 "$BT/apksigner" verify --verbose "$OUT"
-"$BT/aapt2" dump badging "$OUT" | head -5
+# sed, not head: head exits early and SIGPIPEs aapt2 under pipefail.
+"$BT/aapt2" dump badging "$OUT" | sed -n 1,6p
 echo "APK: $OUT ($(du -h "$OUT" | cut -f1))"

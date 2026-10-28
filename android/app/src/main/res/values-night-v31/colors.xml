@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget tokens on Android 12+, dark: Material You system colors. -->
+    <color name="mb_surface">@android:color/system_accent1_800</color>
+    <color name="mb_on_surface">@android:color/system_accent1_50</color>
+    <color name="mb_muted">@android:color/system_accent2_200</color>
+    <color name="mb_primary">@android:color/system_accent1_200</color>
+    <color name="mb_on_primary">@android:color/system_accent1_800</color>
+    <color name="mb_inset">@android:color/system_accent2_900</color>
+</resources>

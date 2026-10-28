@@ -22,10 +22,11 @@ object ApiClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
-    fun getBoard(token: String): BoardResponse? {
-        val body = get(token, "$BASE_URL/api/board") ?: return null
-        return parseBoard(JSONObject(body))
-    }
+    /** The board as raw JSON (cached by [BoardCache]), or null. */
+    fun getBoardJson(token: String): String? = get(token, "$BASE_URL/api/board")
+
+    fun getBoard(token: String): BoardResponse? =
+        getBoardJson(token)?.let { parseBoard(JSONObject(it)) }
 
     fun getTasks(token: String): List<BoardTask>? {
         val body = get(token, "$BASE_URL/api/tasks") ?: return null
@@ -38,8 +39,9 @@ object ApiClient {
     fun completeTask(token: String, id: Int): Boolean =
         postAction(token, id, "complete")
 
-    fun snoozeTask(token: String, id: Int): Boolean =
-        postAction(token, id, "snooze")
+    /** "Later": hide the task until [untilMillis] and re-plan it then. */
+    fun snoozeTask(token: String, id: Int, untilMillis: Long): Boolean =
+        postAction(token, id, "snooze", JSONObject().put("until", toIso(untilMillis)).toString())
 
     fun reopenTask(token: String, id: Int): Boolean =
         postAction(token, id, "reopen")
@@ -67,19 +69,20 @@ object ApiClient {
         }
     }
 
-    private fun postAction(token: String, id: Int, action: String): Boolean {
+    private fun postAction(token: String, id: Int, action: String, json: String? = null): Boolean {
         var connection: HttpURLConnection? = null
         return try {
             connection = (URL("$BASE_URL/api/tasks/$id/$action").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Authorization", "Bearer $token")
-                // Empty body: the API only needs the id + action in the path.
-                setRequestProperty("Content-Length", "0")
+                doOutput = true
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
             }
-            // Touch the output stream so the empty POST is actually sent.
-            connection.outputStream.use { it.flush() }
+            val body = (json ?: "").toByteArray(Charsets.UTF_8)
+            if (json != null) connection.setRequestProperty("Content-Type", "application/json")
+            connection.setFixedLengthStreamingMode(body.size)
+            connection.outputStream.use { it.write(body) }
             val code = connection.responseCode
             if (code == HttpURLConnection.HTTP_UNAUTHORIZED) throw UnauthorizedException()
             code in 200..299

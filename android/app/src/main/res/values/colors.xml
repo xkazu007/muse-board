@@ -7,4 +7,16 @@
     <color name="muted">#a8a8a8</color>
     <color name="accent">#2f9e6e</color>
     <color name="amber">#ffb454</color>
+
+    <!-- Widget design tokens (docs/design-system.md). This is the static
+         fallback palette for Android 8 to 11, light; values-night holds the
+         dark one. On Android 12+ values-v31 / values-night-v31 swap in the
+         wallpaper-based system colors (Material You). Same values as the
+         web app's CSS variables. -->
+    <color name="mb_surface">#dae2ff</color>
+    <color name="mb_on_surface">#001a41</color>
+    <color name="mb_muted">#3a4a6b</color>
+    <color name="mb_primary">#2b5bb5</color>
+    <color name="mb_on_primary">#ffffff</color>
+    <color name="mb_inset">#c6d3fa</color>
 </resources>

@@ -1,8 +1,12 @@
 package tech.mourid.museboard
 
+import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -58,7 +62,7 @@ class MainActivity : Activity() {
             focusId?.let { runTaskAction(it, ApiClient::completeTask) }
         }
         findViewById<Button>(R.id.btn_snooze).setOnClickListener {
-            focusId?.let { runTaskAction(it, ApiClient::snoozeTask) }
+            focusId?.let { showLaterChoices(it) }
         }
         findViewById<Button>(R.id.btn_refresh).setOnClickListener { loadBoard() }
         findViewById<Button>(R.id.btn_change_token).setOnClickListener {
@@ -113,6 +117,7 @@ class MainActivity : Activity() {
     private fun showBoard() {
         tokenBox.visibility = View.GONE
         boardBox.visibility = View.VISIBLE
+        askForNotificationsOnce()
     }
 
     private fun saveToken() {
@@ -161,11 +166,13 @@ class MainActivity : Activity() {
             }
             focusId = board.focus?.id
             if (board.focus != null) {
-                focusTitle.text = board.focus.title
-                val detail = listOfNotNull(board.focus.detail, formatDue(board.focus.dueAt))
-                    .filter { it.isNotEmpty() }
-                    .joinToString(" · ")
-                focusDetail.text = detail
+                // Same content as the widget: the first step big, then the
+                // plan line and (when there is a step) the task itself.
+                focusTitle.text = board.focus.firstStep ?: board.focus.title
+                focusDetail.text = listOfNotNull(
+                    focusMeta(board.focus),
+                    if (board.focus.firstStep != null) board.focus.title else board.focus.detail,
+                ).joinToString("\n")
                 findViewById<Button>(R.id.btn_done).isEnabled = true
                 findViewById<Button>(R.id.btn_snooze).isEnabled = true
             } else {
@@ -201,7 +208,10 @@ class MainActivity : Activity() {
         for (task in tasks) {
             val view = inflater.inflate(R.layout.item_task, taskList, false)
             view.findViewById<TextView>(R.id.task_title).text = task.title
-            val detail = listOfNotNull(task.detail, formatDue(task.dueAt))
+            val plan = task.planAt?.let { at ->
+                listOfNotNull("Plan " + formatWhen(at), task.planWhere).joinToString(" · ")
+            }
+            val detail = listOfNotNull(task.firstStep, plan, task.detail, formatDue(task.dueAt))
                 .filter { it.isNotEmpty() }
                 .joinToString(" · ")
             view.findViewById<TextView>(R.id.task_detail).text = detail
@@ -219,7 +229,31 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Done / Not now / Undo: call the API, then reload the app and widget. */
+    /** "Later" asks when: the task comes back (and reminds) at that time. */
+    private fun showLaterChoices(id: Int) {
+        val choices = laterChoices()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.later_title)
+            .setItems(choices.map { getString(it.first) }.toTypedArray()) { _, which ->
+                val until = choices[which].second
+                runTaskAction(id) { t, taskId -> ApiClient.snoozeTask(t, taskId, until) }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Plan reminders need the notification permission on Android 13+.
+     *  Asked once, after sign-in; a "no" is respected (reminders stay off). */
+    private fun askForNotificationsOnce() {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        val prefs = getSharedPreferences("muse_board_ui", MODE_PRIVATE)
+        if (prefs.getBoolean("asked_notifications", false)) return
+        prefs.edit().putBoolean("asked_notifications", true).apply()
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+    }
+
+    /** Done / Later / Undo: call the API, then reload the app and widget. */
     private fun runTaskAction(id: Int, call: (String, Int) -> Boolean) {
         val t = token ?: return
         scope.launch {

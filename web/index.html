@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#121212">
+<meta name="theme-color" content="#f9f9ff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
 <title>Muse Board</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -12,40 +13,49 @@
 </head>
 <body>
 <main class="wrap">
-  <header>
-    <h1>Muse Board</h1>
-    <p id="date" class="muted"></p>
+  <header class="top">
+    <span class="brand">Muse Board</span>
+    <span id="date" class="muted"></span>
   </header>
 
   <section id="token-box" class="card hidden">
     <h2>Sign in</h2>
-    <p class="muted">Paste your board token once. It stays on this phone.</p>
+    <p class="muted">Paste your board token once. It stays on this device.</p>
+    <label class="sr-only" for="token-input">Board token</label>
     <input id="token-input" type="password" placeholder="Board token" autocomplete="off">
-    <button id="token-save" class="btn primary">Save</button>
+    <button id="token-save" class="btn primary wide">Save</button>
     <p id="token-error" class="error hidden">That token didn't work. Try again.</p>
   </section>
 
   <section id="board" class="hidden">
-    <div class="card focus-card">
-      <p class="label">Do this now</p>
-      <h2 id="focus-title">—</h2>
-      <p id="focus-detail" class="muted"></p>
-      <p id="waiting" class="waiting hidden">Still waiting on you — it's after 8pm.</p>
-      <div class="row">
-        <button id="btn-done" class="btn done">✓ Done</button>
-        <button id="btn-snooze" class="btn ghost">Not now →</button>
+    <article class="card focus">
+      <div class="focus-main">
+        <p id="focus-meta" class="meta">Now</p>
+        <h1 id="focus-step">…</h1>
+        <p id="focus-task" class="muted"></p>
       </div>
-    </div>
+      <div class="focus-actions">
+        <button id="btn-done" class="done" aria-label="Done">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </button>
+        <button id="btn-later" class="later" aria-expanded="false" aria-controls="later-menu">Later</button>
+      </div>
+      <div id="later-menu" class="later-menu hidden" role="group" aria-label="Remind me">
+        <p class="muted small">Come back to it…</p>
+        <div id="later-options" class="chips"></div>
+        <button id="later-cancel" class="link">Cancel</button>
+      </div>
+    </article>
 
-    <div class="card">
-      <p class="label">Up next</p>
+    <section class="card inset">
+      <p class="label">Then</p>
       <ul id="upcoming"></ul>
-    </div>
+    </section>
 
-    <p class="footer"><span id="done-count">Done today: 0</span> · <button id="btn-refresh" class="link">Refresh</button> · <button id="btn-logout" class="link">Change token</button></p>
+    <p class="footer"><span id="done-count">0 done today</span> · <button id="btn-refresh" class="link">Refresh</button> · <button id="btn-logout" class="link">Change token</button></p>
   </section>
 
-  <p id="status" class="muted small"></p>
+  <p id="status" class="muted small" role="status"></p>
 </main>
 <script src="/app.js"></script>
 </body>
