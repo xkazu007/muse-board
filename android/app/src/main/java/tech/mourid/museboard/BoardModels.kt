@@ -25,6 +25,8 @@ data class BoardTask(
     val completedAt: String? = null,
     /** Times "Later" was used since the first step last changed. */
     val snoozeCount: Int = 0,
+    /** Go-to link: where the first step happens. */
+    val url: String? = null,
 )
 
 data class BoardResponse(
@@ -60,6 +62,7 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     snoozedUntil = obj.stringOrNull("snoozed_until"),
     completedAt = obj.stringOrNull("completed_at"),
     snoozeCount = obj.optInt("snooze_count", 0),
+    url = obj.stringOrNull("url"),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -69,6 +72,25 @@ private fun JSONObject.tasks(key: String): List<BoardTask> {
     val arr = optJSONArray(key) ?: return emptyList()
     return (0 until arr.length()).map { parseTask(arr.getJSONObject(it)) }
 }
+
+/** The `{ tasks: [...] }` body of GET /api/tasks. */
+fun parseTasks(json: String): List<BoardTask> = JSONObject(json).tasks("tasks")
+
+/** The API's JSON for a task (to hand a task to another screen). */
+fun BoardTask.toJson(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("title", title)
+    .put("detail", detail ?: JSONObject.NULL)
+    .put("first_step", firstStep ?: JSONObject.NULL)
+    .put("due_at", dueAt ?: JSONObject.NULL)
+    .put("plan_at", planAt ?: JSONObject.NULL)
+    .put("plan_where", planWhere ?: JSONObject.NULL)
+    .put("position", position)
+    .put("status", status)
+    .put("snoozed_until", snoozedUntil ?: JSONObject.NULL)
+    .put("completed_at", completedAt ?: JSONObject.NULL)
+    .put("snooze_count", snoozeCount)
+    .put("url", url ?: JSONObject.NULL)
 
 fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     date = obj.optString("date", ""),

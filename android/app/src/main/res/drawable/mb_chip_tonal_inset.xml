@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Small chip ("Too big?", "Open link"): 48dp to tap, 36dp to see. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/mb_pill_tonal"
+    android:insetBottom="6dp"
+    android:insetTop="6dp" />

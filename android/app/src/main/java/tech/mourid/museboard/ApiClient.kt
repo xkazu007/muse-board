@@ -28,13 +28,9 @@ object ApiClient {
     fun getBoard(token: String): BoardResponse? =
         getBoardJson(token)?.let { parseBoard(JSONObject(it)) }
 
-    fun getTasks(token: String): List<BoardTask>? {
-        val body = get(token, "$BASE_URL/api/tasks") ?: return null
-        val arr = JSONObject(body).optJSONArray("tasks") ?: return emptyList()
-        val out = ArrayList<BoardTask>()
-        for (i in 0 until arr.length()) out.add(parseTask(arr.getJSONObject(i)))
-        return out
-    }
+    /** The task list as raw JSON (cached by [BoardCache]), or null. */
+    fun getTasksJson(token: String): String? = get(token, "$BASE_URL/api/tasks")
+
 
     /** One task (the detail page), or null. */
     fun getTask(token: String, id: Int): BoardTask? =

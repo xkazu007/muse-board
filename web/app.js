@@ -57,6 +57,11 @@ function fmtWhen(iso) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: TZ });
 }
 
+/** Only http(s) links become clickable (never javascript: or data:). */
+function safeUrl(url) {
+  return typeof url === "string" && /^https?:\/\//i.test(url);
+}
+
 /** The focus card's top line: "Now · 21:00 · desk", else the deadline. */
 function focusMeta(t) {
   const parts = ["Now"];
@@ -104,9 +109,19 @@ async function loadBoard() {
       $("focus-step").textContent = f.first_step || f.title;
       $("focus-task").textContent = f.first_step ? f.title : f.detail || "";
     } else {
+      $("focus-open").classList.add("hidden");
       $("focus-meta").textContent = "Now";
       $("focus-step").textContent = "All clear. Nothing left today.";
       $("focus-task").textContent = "";
+    }
+    // Go-to link (issue #12): a small secondary action, never the main one.
+    const openLink = $("focus-open");
+    if (f && safeUrl(f.url)) {
+      openLink.href = f.url;
+      openLink.classList.remove("hidden");
+    } else {
+      openLink.classList.add("hidden");
+      openLink.removeAttribute("href");
     }
     $("btn-done").disabled = !f;
     $("btn-later").disabled = !f;
@@ -126,7 +141,18 @@ async function loadBoard() {
       const when = document.createElement("span");
       when.className = "when";
       when.textContent = fmtWhen(t.plan_at || t.due_at);
-      li.append(title, when);
+      li.append(title);
+      if (safeUrl(t.url)) {
+        const go = document.createElement("a");
+        go.className = "row-link";
+        go.href = t.url;
+        go.target = "_blank";
+        go.rel = "noopener noreferrer";
+        go.textContent = "↗";
+        go.setAttribute("aria-label", "Open link for " + t.title);
+        li.append(go);
+      }
+      li.append(when);
       ul.appendChild(li);
     }
     $("done-count").textContent = b.doneToday + " done today";

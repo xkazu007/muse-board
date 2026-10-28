@@ -113,6 +113,18 @@ input {
 ul { list-style: none; margin: 0; padding: 0; }
 li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 15px; }
 li .when { color: var(--muted); white-space: nowrap; }
+li > span:first-child { flex: 1; min-width: 0; }
+.open-link {
+  align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px;
+  padding: 0 16px; margin-top: 4px; border-radius: 22px;
+  background: var(--secondary); color: var(--on-secondary);
+  font: 500 14px Roboto, system-ui, sans-serif; text-decoration: none;
+}
+.row-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; margin: -10px 0; border-radius: 22px;
+  color: var(--primary); text-decoration: none; font-size: 18px;
+}
 .error { color: var(--error); }
 .footer { margin-top: 18px; color: var(--muted); font-size: 14px; }
 .link { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline; min-height: 24px; }

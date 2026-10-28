@@ -102,6 +102,20 @@
                     android:textColor="@color/mb_muted"
                     android:textSize="12sp" />
 
+                <!-- Go-to link of the focus task (issue #12) -->
+                <TextView
+                    android:id="@+id/mb_open"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/open_link_short"
+                    android:textColor="@color/mb_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
                 <TextView
                     android:id="@+id/mb_undo"
                     android:layout_width="wrap_content"

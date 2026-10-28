@@ -3,7 +3,6 @@ package tech.mourid.museboard
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -45,6 +44,8 @@ class TaskActivity : Activity() {
     private lateinit var stepEdit: EditText
     private lateinit var whereEdit: EditText
     private lateinit var notesEdit: EditText
+    private lateinit var linkEdit: EditText
+    private lateinit var linkOpen: ImageView
     private lateinit var whenValue: TextView
     private lateinit var whenClear: ImageView
     private lateinit var dueValue: TextView
@@ -58,6 +59,12 @@ class TaskActivity : Activity() {
     private var pending = JSONObject()
     /** Set while fill() writes the fields, so that isn't taken as an edit. */
     private var filling = false
+    /** Edited since opening: a late network refresh must not overwrite it. */
+    private var edited = false
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppTheme.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +81,8 @@ class TaskActivity : Activity() {
         stepEdit = findViewById(R.id.task_step_edit)
         whereEdit = findViewById(R.id.task_where_edit)
         notesEdit = findViewById(R.id.task_notes_edit)
+        linkEdit = findViewById(R.id.task_link_edit)
+        linkOpen = findViewById(R.id.task_link_open)
         whenValue = findViewById(R.id.task_when_value)
         whenClear = findViewById(R.id.task_when_clear)
         dueValue = findViewById(R.id.task_due_value)
@@ -91,6 +100,12 @@ class TaskActivity : Activity() {
         }
         stepEdit.onEdit { queue("first_step", it) }
         whereEdit.onEdit { queue("plan_where", it) }
+        linkEdit.onEdit { typed ->
+            val link = normalizeLink(typed)
+            linkOpen.visibility = if (link.url != null) View.VISIBLE else View.GONE
+            if (link.ok) queue("url", link.url ?: JSONObject.NULL) else status.setText(R.string.link_invalid)
+        }
+        linkOpen.setOnClickListener { normalizeLink(linkEdit.text.toString()).url?.let { openLink(this, it) } }
         notesEdit.onEdit {
             queue("detail", it)
             showLinks(it)
@@ -122,6 +137,17 @@ class TaskActivity : Activity() {
         findViewById<View>(R.id.task_done).setOnClickListener { onDoneOrUndo() }
         findViewById<View>(R.id.task_later).setOnClickListener { onLater() }
 
+        // Open instantly with the task the list already had, then refresh.
+        intent.getStringExtra(EXTRA_TASK_JSON)?.let { json ->
+            try {
+                parseTask(JSONObject(json))
+            } catch (_: Exception) {
+                null
+            }
+        }?.let {
+            task = it
+            fill(it)
+        }
         load()
     }
 
@@ -147,11 +173,14 @@ class TaskActivity : Activity() {
                 null
             }
             if (loaded == null) {
-                status.setText(R.string.detail_load_failed)
+                if (task == null) status.setText(R.string.detail_load_failed)
                 return@launch
             }
+            val shown = task
             task = loaded
-            fill(loaded)
+            // Refill only if the server has something newer and nothing was
+            // typed yet; otherwise the user's edits win (they're saving).
+            if (shown == null || (loaded != shown && !edited)) fill(loaded)
         }
     }
 
@@ -160,6 +189,8 @@ class TaskActivity : Activity() {
         titleEdit.setText(t.title)
         stepEdit.setText(t.firstStep.orEmpty())
         whereEdit.setText(t.planWhere.orEmpty())
+        linkEdit.setText(t.url.orEmpty())
+        linkOpen.visibility = if (t.url != null) View.VISIBLE else View.GONE
         notesEdit.setText(t.detail.orEmpty())
         filling = false
         showTime(whenValue, whenClear, t.planAt)
@@ -200,14 +231,7 @@ class TaskActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(getColor(R.color.mb_primary))
             }
-            row.setOnClickListener {
-                val uri = Uri.parse(if (url.contains("://")) url else "https://$url")
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, uri))
-                } catch (_: Exception) {
-                    Toast.makeText(this, R.string.action_failed, Toast.LENGTH_SHORT).show()
-                }
-            }
+            row.setOnClickListener { openLink(this, url) }
             links.addView(row)
         }
     }
@@ -215,6 +239,7 @@ class TaskActivity : Activity() {
     // --- Saving ----------------------------------------------------------------
 
     private fun queue(field: String, value: Any) {
+        edited = true
         pending.put(field, value)
         handler.removeCallbacks(saveSoon)
         handler.postDelayed(saveSoon, SAVE_DELAY_MS)
@@ -305,11 +330,14 @@ class TaskActivity : Activity() {
     companion object {
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_SHRINK = "shrink"
+        const val EXTRA_TASK_JSON = "task_json"
         private const val SAVE_DELAY_MS = 700L
 
-        fun intent(context: Context, taskId: Int, shrink: Boolean = false): Intent =
+        /** Opens [task]; the page shows it at once and refreshes behind. */
+        fun intent(context: Context, task: BoardTask, shrink: Boolean = false): Intent =
             Intent(context, TaskActivity::class.java)
-                .putExtra(EXTRA_TASK_ID, taskId)
+                .putExtra(EXTRA_TASK_ID, task.id)
+                .putExtra(EXTRA_TASK_JSON, task.toJson().toString())
                 .putExtra(EXTRA_SHRINK, shrink)
     }
 }

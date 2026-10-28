@@ -96,8 +96,25 @@ System font (Roboto / One UI Sans on phones). Five sizes only:
 - **This week**: under Done today, "This week · N done" with earlier days'
   completions grouped by day. A count of what moved, never what didn't: no
   streaks, no misses.
-- **Web theme toggle**: Auto (follows the device) → Light → Dark, remembered
-  on that device, applied before the first paint.
+- **Theme toggle** (web header and app header): Auto (follows the device) →
+  Light → Dark, remembered. The app uses the system's per-app night mode on
+  Android 12+; the widget always follows the launcher.
+- **Go-to link**: when a task has a `url`, a small "Open ↗" (widget: on the
+  Then line; app: a chip on the focus card and a link icon on rows; web: a
+  chip and a ↗ on rows). Secondary, never bigger than the step.
+- **History** (app footer): every completed task by day, newest first.
+  Swipe right or long-press to reopen.
+
+## Feel (perceived speed)
+
+- Under 0.1 s every tap visibly does something; that is what "instant"
+  feels like (Nielsen's response-time limits). Updates are optimistic; the
+  network catches up.
+- Screens open with data: cached board and tasks, or the task handed over.
+  No blank screens, no spinners for normal use.
+- Offline is a quiet line ("Showing your last update…"), never an error.
+- Refreshes that change nothing redraw nothing.
+- Back uses predictive back (opted in).
 
 ## Native gestures
 

@@ -25,7 +25,7 @@
  * Task fields: title, detail (notes, up to 4000 chars), first_step (the
  * 2-minute starter the widget shows big), due_at, plan_at + plan_where (the
  * "when · where" plan; the phone reminds at plan_at), position (lower =
- * sooner in the queue). Read-only: snooze_count (Laters since first_step
+ * sooner in the queue), url (go-to link, http/https). Read-only: snooze_count (Laters since first_step
  * last changed; the app offers "Too big?" at 2).
  *
  * Env: BOARD_TOKEN (required), DATABASE_URL (required), PORT (default 80).
@@ -83,6 +83,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_at TIMESTAMPTZ;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_where TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snoozed_until TIMESTAMPTZ;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS snooze_count INT NOT NULL DEFAULT 0;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS url TEXT;
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -122,7 +123,7 @@ const SEED = [
 ];
 
 const TASK_COLUMNS =
-  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count";
+  "id, title, detail, first_step, due_at, plan_at, plan_where, position, status, completed_at, snoozed_until, snooze_count, url";
 
 async function initDb() {
   await pool.query(SCHEMA);
@@ -179,6 +180,7 @@ function publicTask(r) {
     // Times "Later" was used since the first step last changed. Two or
     // more: the app offers "Too big? Make it smaller".
     snooze_count: r.snooze_count,
+    url: r.url,
   };
 }
 
@@ -213,6 +215,9 @@ const FIELDS = {
   detail: { kind: "text", max: 4000 },
   first_step: { kind: "text", max: 140 },
   plan_where: { kind: "text", max: 40 },
+  // Go-to link: where the first step happens (the lesson, the Zoom room).
+  // Format only (http / https), like Notion; the destination isn't checked.
+  url: { kind: "url", max: 2000 },
   due_at: { kind: "time" },
   plan_at: { kind: "time" },
   position: { kind: "int" },
@@ -243,6 +248,10 @@ function validateTaskFields(body, { creating }) {
     if (spec.kind === "text") {
       if (spec.required && !value.trim()) return `${name} is required`;
       if (value.length > spec.max) return `${name} is longer than ${spec.max} characters`;
+    }
+    if (spec.kind === "url" && value.trim()) {
+      if (value.length > spec.max) return `${name} is longer than ${spec.max} characters`;
+      if (!/^https?:\/\/\S+$/i.test(value.trim())) return `${name} must start with http:// or https://`;
     }
   }
   return null;

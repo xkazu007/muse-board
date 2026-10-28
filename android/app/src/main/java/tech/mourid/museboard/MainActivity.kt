@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,15 +15,19 @@ import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -34,6 +40,11 @@ import java.util.TimeZone
  * swipe left for Later (asks when), long-press for a menu; haptics on each.
  * Every Done gets an Undo bar for a few seconds. The widget and icon
  * shortcuts are refreshed after every change.
+ *
+ * Feels instant: the last board and task list paint from the phone's cache
+ * at once and the network refreshes behind them (both calls in parallel);
+ * the screen redraws only when the data changed; Done / Later / Undo
+ * update the screen first and the server catches up (like the widget).
  *
  * Framework Activity only (no AppCompat): the app carries no AndroidX.
  */
@@ -59,13 +70,26 @@ class MainActivity : Activity() {
 
     private var token: String? = null
     private var board: BoardResponse? = null
+    private var tasks: List<BoardTask> = emptyList()
+    private lateinit var offlineNote: View
     /** Set while render() resets the checkbox, so that isn't taken as a tap. */
     private var rendering = false
     private val hideUndo = Runnable { undoBar.visibility = View.GONE }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppTheme.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        findViewById<ImageView>(R.id.theme_toggle).apply {
+            val mode = AppTheme.get(this@MainActivity)
+            setImageResource(AppTheme.icon(mode))
+            contentDescription = getString(AppTheme.label(mode))
+            setOnClickListener { AppTheme.cycle(this@MainActivity) }
+        }
 
         tokenBox = findViewById(R.id.token_box)
         boardBox = findViewById(R.id.board_box)
@@ -82,6 +106,7 @@ class MainActivity : Activity() {
         undoText = findViewById(R.id.undo_text)
         undoButton = findViewById(R.id.undo_button)
         gestureHint = findViewById(R.id.gesture_hint)
+        offlineNote = findViewById(R.id.offline_note)
 
         styleSwipe(focusRow, R.dimen.mb_app_card_radius)
         focusCheck.setOnCheckedChangeListener { _, checked ->
@@ -100,9 +125,15 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.focus_too_big).setOnClickListener {
             board?.focus?.let { openTask(it, shrink = true) }
         }
+        findViewById<View>(R.id.focus_open).setOnClickListener {
+            board?.focus?.url?.let { openLink(this, it) }
+        }
 
         findViewById<Button>(R.id.token_save).setOnClickListener { saveToken() }
         findViewById<View>(R.id.btn_refresh).setOnClickListener { loadAll() }
+        findViewById<View>(R.id.btn_history).setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
         findViewById<View>(R.id.btn_change_token).setOnClickListener {
             TokenStore.clear(this)
             token = null
@@ -113,7 +144,12 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.btn_add_task).setOnClickListener { showQuickAdd() }
 
         token = TokenStore.get(this)
-        if (token.isNullOrBlank()) showTokenBox() else showBoard()
+        if (token.isNullOrBlank()) {
+            showTokenBox()
+        } else {
+            showBoard()
+            showCached()
+        }
     }
 
     override fun onResume() {
@@ -130,25 +166,64 @@ class MainActivity : Activity() {
 
     // --- Loading and rendering -----------------------------------------------
 
+    /** The last board and task list, straight from the cache: no wait. */
+    private fun showCached() {
+        val b = BoardCache.load(this) ?: return
+        val ts = BoardCache.loadTasks(this) ?: return
+        show(b, ts)
+    }
+
+    /** Board and task list from the API, fetched in parallel, cached, and
+     *  shown if they changed. Offline: the cached view stays, with a note. */
     private fun loadAll() {
         val t = token ?: return
         scope.launch {
-            val loaded = try {
-                withContext(Dispatchers.IO) { ApiClient.getBoard(t) to ApiClient.getTasks(t) }
+            val fetched = try {
+                withContext(Dispatchers.IO) {
+                    coroutineScope {
+                        val b = async { ApiClient.getBoardJson(t) }
+                        val ts = async { ApiClient.getTasksJson(t) }
+                        b.await() to ts.await()
+                    }
+                }
             } catch (_: UnauthorizedException) {
                 onTokenRejected()
                 return@launch
             } catch (_: Exception) {
                 null
             }
-            val (b, tasks) = loaded ?: (null to null)
-            if (b == null || tasks == null) {
-                Toast.makeText(this@MainActivity, R.string.board_unreachable, Toast.LENGTH_SHORT).show()
+            val (boardJson, tasksJson) = fetched ?: (null to null)
+            if (boardJson == null || tasksJson == null) {
+                if (board != null) {
+                    offlineNote.visibility = View.VISIBLE
+                } else {
+                    Toast.makeText(this@MainActivity, R.string.board_unreachable, Toast.LENGTH_SHORT).show()
+                }
                 return@launch
             }
-            board = b
-            render(b, tasks)
+            offlineNote.visibility = View.GONE
+            BoardCache.save(this@MainActivity, boardJson)
+            BoardCache.saveTasks(this@MainActivity, tasksJson)
+            show(parseBoard(JSONObject(boardJson)), parseTasks(tasksJson))
         }
+    }
+
+    /** Draws [b] and [ts] unless they are what's already on screen: a
+     *  refresh with no changes never rebuilds the list (no flash). */
+    private fun show(b: BoardResponse, ts: List<BoardTask>) {
+        if (b == board && ts == tasks && boardBox.tag == RENDERED) return
+        board = b
+        tasks = ts
+        boardBox.tag = RENDERED
+        render(b, ts)
+    }
+
+    /** Applies [change] to what's on screen right away (optimistic), before
+     *  the API call; the next loadAll() brings the real state. */
+    private fun optimistic(change: (BoardResponse, List<BoardTask>) -> Pair<BoardResponse, List<BoardTask>>) {
+        val b = board ?: return
+        val (nb, nts) = change(b, tasks)
+        show(nb, nts)
     }
 
     private fun render(b: BoardResponse, tasks: List<BoardTask>) {
@@ -167,6 +242,7 @@ class MainActivity : Activity() {
             focusCheck.visibility = View.VISIBLE
             focusLater.visibility = View.VISIBLE
             findViewById<View>(R.id.focus_too_big).visibility = if (tooBig(focus)) View.VISIBLE else View.GONE
+            findViewById<View>(R.id.focus_open).visibility = if (focus.url != null) View.VISIBLE else View.GONE
             focusRow.onSwipeRight = { complete(focus) }
             focusRow.onSwipeLeft = { askLater(focus, focusRow) }
         } else {
@@ -181,6 +257,7 @@ class MainActivity : Activity() {
             focusCheck.visibility = View.GONE
             focusLater.visibility = View.GONE
             findViewById<View>(R.id.focus_too_big).visibility = View.GONE
+            findViewById<View>(R.id.focus_open).visibility = View.GONE
             focusRow.onSwipeRight = null
             focusRow.onSwipeLeft = null
         }
@@ -254,7 +331,7 @@ class MainActivity : Activity() {
     private fun tooBig(task: BoardTask): Boolean = task.status == "open" && task.snoozeCount >= 2
 
     private fun openTask(task: BoardTask, shrink: Boolean = false) {
-        startActivity(TaskActivity.intent(this, task.id, shrink))
+        startActivity(TaskActivity.intent(this, task, shrink))
     }
 
     private enum class Kind { OPEN, LATER, DONE }
@@ -282,6 +359,11 @@ class MainActivity : Activity() {
             row.findViewById<View>(R.id.task_too_big).apply {
                 visibility = if (tooBig(task)) View.VISIBLE else View.GONE
                 setOnClickListener { openTask(task, shrink = true) }
+            }
+            row.findViewById<View>(R.id.task_open).apply {
+                val url = task.url
+                visibility = if (url != null && kind != Kind.DONE) View.VISIBLE else View.GONE
+                setOnClickListener { url?.let { openLink(this@MainActivity, it) } }
             }
             row.findViewById<View>(R.id.task_row).setOnClickListener { openTask(task) }
             if (kind == Kind.DONE) {
@@ -311,16 +393,29 @@ class MainActivity : Activity() {
     private fun complete(task: BoardTask) {
         markHintSeen()
         PlanReminderReceiver.cancel(this, task.id)
-        runAction({ t -> ApiClient.completeTask(t, task.id) }) {
-            val count = (board?.doneToday ?: 0) + 1
-            showUndoBar(getString(R.string.done_feedback, count), task)
+        val count = (board?.doneToday ?: 0) + 1
+        val now = toIso(System.currentTimeMillis())
+        optimistic { b, ts ->
+            val nts = ts.map { if (it.id == task.id) it.copy(status = "done", completedAt = now) else it }
+            val nb = if (b.focus?.id == task.id) {
+                b.copy(focus = b.next, next = null, upcoming = b.upcoming.filter { it.id != b.next?.id }, doneToday = count)
+            } else {
+                b.copy(doneToday = count)
+            }
+            nb to nts
         }
+        showUndoBar(getString(R.string.done_feedback, count), task)
+        runAction { t -> ApiClient.completeTask(t, task.id) }
     }
 
     private fun reopen(task: BoardTask) {
-        runAction({ t -> ApiClient.reopenTask(t, task.id) }) {
-            showUndoBar(getString(R.string.undone), null)
+        optimistic { b, ts ->
+            val wasToday = isToday(task.completedAt)
+            val nb = b.copy(doneToday = if (wasToday) maxOf(0, b.doneToday - 1) else b.doneToday)
+            nb to ts.map { if (it.id == task.id) it.copy(status = "open", completedAt = null) else it }
         }
+        showUndoBar(getString(R.string.undone), null)
+        runAction { t -> ApiClient.reopenTask(t, task.id) }
     }
 
     /** Quick-add (issue #6): the task lands at the end of the queue. */
@@ -365,10 +460,21 @@ class MainActivity : Activity() {
 
     private fun snooze(task: BoardTask, choice: LaterChoice) {
         val until = choice.at()
+        val untilIso = toIso(until)
         PlanReminderReceiver.cancel(this, task.id)
-        runAction({ t -> ApiClient.snoozeTask(t, task.id, until) }) {
-            showUndoBar(getString(R.string.later_feedback, formatWhen(toIso(until))), null)
+        optimistic { b, ts ->
+            val nts = ts.map {
+                if (it.id == task.id) it.copy(snoozedUntil = untilIso, planAt = untilIso, snoozeCount = it.snoozeCount + 1) else it
+            }
+            val nb = if (b.focus?.id == task.id) {
+                b.copy(focus = b.next, next = null, upcoming = b.upcoming.filter { it.id != b.next?.id })
+            } else {
+                b
+            }
+            nb to nts
         }
+        showUndoBar(getString(R.string.later_feedback, formatWhen(untilIso)), null)
+        runAction { t -> ApiClient.snoozeTask(t, task.id, until) }
     }
 
     /** Long-press: the same actions as the gestures, in the bottom sheet. */
@@ -387,9 +493,10 @@ class MainActivity : Activity() {
         sheet.show()
     }
 
-    /** Calls the API, then reloads the app and refreshes the widget (and
-     *  with it the icon shortcuts and reminders). */
-    private fun runAction(call: (String) -> Boolean, onOk: () -> Unit) {
+    /** Calls the API (the screen already shows the result), then reloads
+     *  the real state and refreshes the widget, icon shortcuts and reminders.
+     *  A failure says so and the reload puts things back. */
+    private fun runAction(call: (String) -> Boolean) {
         val t = token ?: return
         scope.launch {
             val ok = try {
@@ -400,7 +507,10 @@ class MainActivity : Activity() {
             } catch (_: Exception) {
                 false
             }
-            if (ok) onOk() else Toast.makeText(this@MainActivity, R.string.action_failed, Toast.LENGTH_SHORT).show()
+            if (!ok) {
+                undoBar.visibility = View.GONE
+                Toast.makeText(this@MainActivity, R.string.action_failed, Toast.LENGTH_SHORT).show()
+            }
             loadAll()
             WidgetUpdater.requestRefresh(this@MainActivity)
         }
@@ -524,6 +634,7 @@ class MainActivity : Activity() {
 
     private companion object {
         const val UI_PREFS = "muse_board_ui"
+        const val RENDERED = "rendered"
         const val TICK_MS = 420L
         const val UNDO_MS = 6_000L
     }

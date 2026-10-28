@@ -159,6 +159,44 @@
                     android:textSize="15sp" />
             </LinearLayout>
 
+            <!-- Go-to link (issue #12) -->
+            <LinearLayout style="@style/MuseBoard.PropertyRow">
+
+                <ImageView
+                    style="@style/MuseBoard.PropertyIcon"
+                    android:src="@drawable/mb_ic_link24" />
+
+                <TextView
+                    style="@style/MuseBoard.PropertyLabel"
+                    android:text="@string/detail_link" />
+
+                <EditText
+                    android:id="@+id/task_link_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical|end"
+                    android:hint="@string/detail_link_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:paddingEnd="4dp"
+                    android:textColor="@color/mb_on_surface"
+                    android:textColorHint="@color/mb_muted"
+                    android:textSize="15sp" />
+
+                <ImageView
+                    android:id="@+id/task_link_open"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/mb_ripple_rounded"
+                    android:contentDescription="@string/open_link"
+                    android:scaleType="center"
+                    android:src="@drawable/mb_ic_link24"
+                    android:visibility="gone" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/task_due_row"
                 style="@style/MuseBoard.PropertyRow">

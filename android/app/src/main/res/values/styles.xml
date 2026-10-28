@@ -15,8 +15,8 @@
 
     <style name="MuseBoard.FooterLink" parent="">
         <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">44dp</item>
-        <item name="android:minWidth">44dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:minWidth">48dp</item>
         <item name="android:gravity">center</item>
         <item name="android:paddingStart">10dp</item>
         <item name="android:paddingEnd">10dp</item>
@@ -80,8 +80,8 @@
     </style>
 
     <style name="MuseBoard.PropertyClear" parent="">
-        <item name="android:layout_width">44dp</item>
-        <item name="android:layout_height">44dp</item>
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
         <item name="android:background">@drawable/mb_ripple_rounded</item>
         <item name="android:scaleType">center</item>
         <item name="android:src">@drawable/mb_ic_close24</item>

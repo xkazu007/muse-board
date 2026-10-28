@@ -50,9 +50,9 @@
             <TextView
                 android:id="@+id/task_too_big"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/mb_pill_tonal"
+                android:layout_height="48dp"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/mb_chip_tonal_inset"
                 android:gravity="center"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
@@ -69,5 +69,18 @@
             android:layout_marginStart="12dp"
             android:textColor="@color/mb_muted"
             android:textSize="13sp" />
+
+        <!-- Go-to link (issue #12) -->
+        <ImageView
+            android:id="@+id/task_open"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="-12dp"
+            android:background="@drawable/mb_ripple_rounded"
+            android:contentDescription="@string/open_link"
+            android:scaleType="center"
+            android:src="@drawable/mb_ic_link24"
+            android:visibility="gone" />
     </LinearLayout>
 </tech.mourid.museboard.SwipeRow>

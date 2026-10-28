@@ -4,12 +4,16 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.Dialog
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.widget.Toast
 import java.util.Calendar
 import java.util.Locale
 
@@ -78,4 +82,32 @@ fun pickDateTime(activity: Activity, initialMillis: Long?, onPicked: (PickedTime
         start.get(Calendar.MONTH),
         start.get(Calendar.DAY_OF_MONTH),
     ).show()
+}
+
+/** A typed link as the API wants it: "zoom.us/j/1" → "https://zoom.us/j/1".
+ *  Blank → null (clears it). Not a web address → null and [ok] false. */
+data class NormalizedLink(val url: String?, val ok: Boolean)
+
+fun normalizeLink(typed: String): NormalizedLink {
+    val t = typed.trim()
+    if (t.isEmpty()) return NormalizedLink(null, true)
+    // Another scheme ("javascript:", "mailto:") is refused, not prefixed;
+    // a dot before the colon means host:port ("zoom.us:443/x"), which is fine.
+    if (!t.contains("://") && Regex("^[a-z][a-z0-9+-]*:", RegexOption.IGNORE_CASE).containsMatchIn(t)) {
+        return NormalizedLink(null, false)
+    }
+    val withScheme = if (t.contains("://")) t else "https://$t"
+    val ok = Regex("^https?://\\S+$", RegexOption.IGNORE_CASE).matches(withScheme)
+    return NormalizedLink(if (ok) withScheme else null, ok)
+}
+
+/** Opens a task's go-to link (or a link from its notes) in the browser. A
+ *  bare "zoom.us/j/1" gets https://. */
+fun openLink(context: Context, url: String) {
+    val uri = Uri.parse(if (url.contains("://")) url else "https://$url")
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+    } catch (_: Exception) {
+        Toast.makeText(context, R.string.action_failed, Toast.LENGTH_SHORT).show()
+    }
 }

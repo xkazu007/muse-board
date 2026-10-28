@@ -24,6 +24,7 @@ class QuickAddSheet(
     private val step: EditText = dialog.findViewById(R.id.add_task_step)
     private val whenButton: TextView = dialog.findViewById(R.id.add_task_when)
     private val where: EditText = dialog.findViewById(R.id.add_task_where)
+    private val link: EditText = dialog.findViewById(R.id.add_task_link)
     private val error: TextView = dialog.findViewById(R.id.add_task_error)
     private val saveButton: Button = dialog.findViewById(R.id.add_task_save)
     private var planLocal: String? = null
@@ -63,6 +64,13 @@ class QuickAddSheet(
             .put("first_step", step.text.toString().trim())
         planLocal?.let { fields.put("plan_at", it) }
         where.text.toString().trim().takeIf { it.isNotEmpty() }?.let { fields.put("plan_where", it) }
+        val typedLink = normalizeLink(link.text.toString())
+        if (!typedLink.ok) {
+            error.setText(R.string.link_invalid)
+            error.visibility = View.VISIBLE
+            return
+        }
+        typedLink.url?.let { fields.put("url", it) }
         saveButton.isEnabled = false
         error.visibility = View.GONE
         save(fields) { ok ->

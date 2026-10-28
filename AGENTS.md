@@ -41,6 +41,7 @@ that glance is enough to start.
 | `due_at` | The real deadline, if there is one. Shown only when there is no plan. Same time format. |
 | `detail` | Optional notes, up to 4000 characters. Shown on the app's detail page; links in it become tappable there. |
 | `position` | Queue order, lower comes first. The lowest open one is the focus. |
+| `url` | Go-to link: where the first step happens (the lesson, the Zoom room, the doc). `http://` or `https://` only. Shows as a small "Open" next to the task on the widget, the app and the web; the first step stays the big text. Set it whenever you know the link. |
 
 `plan_at` + `plan_where` together are an implementation intention ("at 21:00
 at my desk I open Coursera"), the best-supported technique in the research
@@ -154,8 +155,14 @@ and the rules below.
   launcher applies updates on top of what is on screen, so anything you
   don't set keeps its old value.
 - **Instant feedback.** Done and Later update the widget from `BoardCache`
-  before the network call (`WidgetUpdater.showOptimistic`). Keep any new
-  action this fast.
+  before the network call (`WidgetUpdater.showOptimistic`). The app does the
+  same (`MainActivity.optimistic`), paints from the cached board and task
+  list before fetching, fetches both in parallel, and redraws only when the
+  data changed. The detail page opens with the task it was given. Keep any
+  new screen or action this fast: never a blank screen waiting on the
+  network, never a toast for being offline.
+- **Touch targets** are 48dp (a smaller visible pill sits inside an inset
+  drawable, e.g. `mb_pill_tonal_inset`).
 - **Version** lives in `android/gradle.properties`. Bump `versionCode` for
   every APK the owner will install.
 - **Design** comes from `docs/design-system.md`: colour tokens, sizes,

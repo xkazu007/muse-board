@@ -66,6 +66,7 @@ object WidgetUpdater {
         R.id.mb_btn_later,
         R.id.mb_then_row,
         R.id.mb_undo,
+        R.id.mb_open,
         R.id.mb_later_row,
         R.id.mb_upnext,
     ) + UP_ROWS + LATER_CHIPS
@@ -309,6 +310,16 @@ object WidgetUpdater {
         if (undoId != null) {
             views.setViewVisibility(R.id.mb_undo, View.VISIBLE)
             views.setOnClickPendingIntent(R.id.mb_undo, actionPendingIntent(context, ACTION_UNDO, undoId))
+        } else {
+            // Go-to link (issue #12): small, on the Then line, never the
+            // main action. Undo takes the spot while it's showing.
+            val url = focus?.url
+            val open = url?.let { openUrlPendingIntent(context, focus.id, it) }
+            if (open != null) {
+                views.setViewVisibility(R.id.mb_then_row, View.VISIBLE)
+                views.setViewVisibility(R.id.mb_open, View.VISIBLE)
+                views.setOnClickPendingIntent(R.id.mb_open, open)
+            }
         }
 
         val upcoming = board.upcoming.take(UP_ROWS.size)
@@ -391,6 +402,19 @@ object WidgetUpdater {
             context,
             taskId,
             intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    /** Opens a task's go-to link in the browser, or null if it isn't a
+     *  web address. */
+    private fun openUrlPendingIntent(context: Context, taskId: Int, url: String): PendingIntent? {
+        val uri = Uri.parse(url)
+        if (uri.scheme != "http" && uri.scheme != "https") return null
+        return PendingIntent.getActivity(
+            context,
+            taskId,
+            Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
