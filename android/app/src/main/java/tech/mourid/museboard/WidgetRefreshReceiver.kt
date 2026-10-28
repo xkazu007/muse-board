@@ -31,6 +31,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
                 if (token.isNullOrBlank()) {
                     BoardCache.clear(context)
                     PlanScheduler.cancelAll(context)
+                    ShortcutSync.sync(context, null)
                     WidgetUpdater.updateAllNoToken(context)
                 } else {
                     val json = ApiClient.getBoardJson(token)
@@ -41,11 +42,13 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
                         BoardCache.save(context, json)
                         WidgetUpdater.updateAll(context, board)
                         PlanScheduler.sync(context, board.plans)
+                        ShortcutSync.sync(context, board)
                     }
                 }
             } catch (_: UnauthorizedException) {
                 BoardCache.clear(context)
                 PlanScheduler.cancelAll(context)
+                ShortcutSync.sync(context, null)
                 WidgetUpdater.updateAllTokenRejected(context)
             } catch (_: Exception) {
                 showLastKnown(context)

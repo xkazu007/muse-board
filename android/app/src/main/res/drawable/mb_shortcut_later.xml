@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App-icon shortcut: Later (clock). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="@color/mb_inset"
+        android:pathData="M2,24 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M13,24 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 M24,18 L24,24 L28,27"
+        android:strokeColor="@color/mb_on_surface"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3" />
+</vector>

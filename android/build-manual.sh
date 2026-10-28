@@ -88,15 +88,19 @@ mkdir -p "$BUILD/compiled" "$BUILD/gen" "$BUILD/classes" "$BUILD/dex"
 # --- 0. Widget layouts: RemoteViews-supported classes only -----------------
 # Anything else (a plain <View>, <Space>, androidx.*) builds fine but makes
 # the widget fail on the phone with "Couldn't add widget".
-python3 - "$SRC"/res/layout/widget_*.xml <<'PY'
-import sys, xml.etree.ElementTree as ET
+python3 - "$SRC"/res/layout*/widget_*.xml <<'PY'
+import re, sys, xml.etree.ElementTree as ET
 ok = {"LinearLayout", "FrameLayout", "RelativeLayout", "GridLayout", "TextView",
       "Button", "ImageView", "ImageButton", "ProgressBar", "Chronometer",
       "AnalogClock", "TextClock", "ViewFlipper", "ListView", "GridView",
       "StackView", "AdapterViewFlipper", "ViewStub", "include", "merge"}
+# Android 12+ (API 31) adds these, so only layout-v31 (and up) may use them.
+ok_v31 = {"CheckBox", "Switch", "RadioButton", "RadioGroup"}
 failed = False
 for path in sys.argv[1:]:
-    bad = sorted({el.tag for el in ET.parse(path).iter()} - ok)
+    m = re.search(r"layout[^/]*-v(\d+)", path)
+    allowed = ok | ok_v31 if m and int(m.group(1)) >= 31 else ok
+    bad = sorted({el.tag for el in ET.parse(path).iter()} - allowed)
     if bad:
         print(f"{path}: not allowed in a widget layout: {', '.join(bad)}", file=sys.stderr)
         failed = True

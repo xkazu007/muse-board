@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Focus widget (docs/design-system.md). 4×2: the first step of the
+<!-- Focus widget (docs/design-system.md). Android 12+ uses the twin in
+     layout-v31/ (Done is a native CheckBox there): keep the two in step.
+
+     4×2: the first step of the
      current task in large text, one big Done, Later. Taller sizes also show
      the "Then" list (WidgetUpdater picks per size on Android 12+).
 
@@ -77,15 +80,41 @@
                 android:textColor="@color/mb_muted"
                 android:textSize="13sp" />
 
-            <TextView
-                android:id="@+id/mb_then"
+            <!-- Then line; after a Done it becomes "✓ Done. 2 today." with
+                 an Undo next to it (32dp tall to stay tappable). -->
+            <LinearLayout
+                android:id="@+id/mb_then_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/mb_muted"
-                android:textSize="12sp" />
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:minHeight="24dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/mb_then"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/mb_muted"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/mb_undo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/undo"
+                    android:textColor="@color/mb_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -118,6 +147,55 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
         </LinearLayout>
+    </LinearLayout>
+
+    <!-- Later choices, shown in place of Done after tapping Later. Labels
+         and actions are set by WidgetUpdater; "Tonight" hides after 19:00. -->
+    <LinearLayout
+        android:id="@+id/mb_later_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/mb_later_1"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/mb_chip_bg"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/mb_on_surface"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/mb_later_2"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/mb_chip_bg"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/mb_on_surface"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/mb_later_3"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/mb_chip_bg"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/mb_on_surface"
+            android:textSize="14sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- "Then" list: taller widget sizes only. -->

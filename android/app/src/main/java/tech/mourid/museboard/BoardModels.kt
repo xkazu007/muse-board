@@ -20,6 +20,9 @@ data class BoardTask(
     val planWhere: String?,
     val position: Int,
     val status: String,
+    /** Hidden by "Later" until this time (null = not snoozed). */
+    val snoozedUntil: String? = null,
+    val completedAt: String? = null,
 )
 
 data class BoardResponse(
@@ -52,6 +55,8 @@ fun parseTask(obj: JSONObject): BoardTask = BoardTask(
     planWhere = obj.stringOrNull("plan_where"),
     position = obj.optInt("position", 0),
     status = obj.optString("status", "open"),
+    snoozedUntil = obj.stringOrNull("snoozed_until"),
+    completedAt = obj.stringOrNull("completed_at"),
 )
 
 private fun JSONObject.taskOrNull(key: String): BoardTask? =
@@ -92,6 +97,12 @@ fun toIso(millis: Long): String = isoParser().format(Date(millis))
 
 private fun casablanca(pattern: String) = SimpleDateFormat(pattern, Locale.UK).apply {
     timeZone = CASABLANCA
+}
+
+/** True when [iso] falls on today's date in Casablanca. */
+fun isToday(iso: String?, now: Long = System.currentTimeMillis()): Boolean {
+    val t = parseIso(iso) ?: return false
+    return dayIndex(t) == dayIndex(now)
 }
 
 private fun dayIndex(millis: Long): Long {
@@ -135,23 +146,39 @@ fun thenLine(task: BoardTask): String {
     return if (whenText.isEmpty()) task.title else "${task.title}, $whenText"
 }
 
-/** "Later" choices in Casablanca time: in 1 hour, tonight 20:00 (only
- *  before 19:00), tomorrow 09:00. Pairs of label resource and epoch millis. */
-fun laterChoices(now: Long = System.currentTimeMillis()): List<Pair<Int, Long>> {
-    val choices = mutableListOf(R.string.later_in_hour to now + 3_600_000L)
-    val cal = Calendar.getInstance(CASABLANCA).apply { timeInMillis = now }
-    if (cal.get(Calendar.HOUR_OF_DAY) < 19) {
-        val tonight = (cal.clone() as Calendar).apply {
-            set(Calendar.HOUR_OF_DAY, 20); set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+/**
+ * "Later" choices, in Casablanca time. The widget shows them as chips and
+ * resolves the time when tapped (so "In 1 hour" is an hour from the tap,
+ * not from when the widget drew); the app shows them in a dialog.
+ */
+enum class LaterChoice(val label: Int, val chip: Int) {
+    HOUR(R.string.later_in_hour, R.string.later_in_hour),
+    TONIGHT(R.string.later_tonight, R.string.later_chip_tonight),
+    TOMORROW(R.string.later_tomorrow, R.string.later_chip_tomorrow);
+
+    /** Epoch millis this choice means at [now]. Tonight is 20:00 today, or
+     *  tomorrow 09:00 once 20:00 has passed (a chip tapped late). */
+    fun at(now: Long = System.currentTimeMillis()): Long = when (this) {
+        HOUR -> now + 3_600_000L
+        TONIGHT -> casablancaAt(now, 0, 20).takeIf { it > now } ?: TOMORROW.at(now)
+        TOMORROW -> casablancaAt(now, 1, 9)
+    }
+
+    companion object {
+        /** What to offer at [now]: Tonight only before 19:00. */
+        fun offered(now: Long = System.currentTimeMillis()): List<LaterChoice> {
+            val hour = Calendar.getInstance(CASABLANCA).apply { timeInMillis = now }
+                .get(Calendar.HOUR_OF_DAY)
+            return if (hour < 19) values().toList() else listOf(HOUR, TOMORROW)
         }
-        choices.add(R.string.later_tonight to tonight.timeInMillis)
     }
-    val tomorrow = (cal.clone() as Calendar).apply {
-        add(Calendar.DAY_OF_YEAR, 1)
-        set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }
-    choices.add(R.string.later_tomorrow to tomorrow.timeInMillis)
-    return choices
 }
+
+/** [hour]:00 in Casablanca, [daysAhead] days after the day of [now]. */
+private fun casablancaAt(now: Long, daysAhead: Int, hour: Int): Long =
+    Calendar.getInstance(CASABLANCA).apply {
+        timeInMillis = now
+        add(Calendar.DAY_OF_YEAR, daysAhead)
+        set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis

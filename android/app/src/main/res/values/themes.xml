@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MuseBoard" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/widget_bg</item>
-        <item name="android:textColorPrimary">@color/text</item>
-        <item name="android:textColorSecondary">@color/muted</item>
-        <item name="android:colorPrimary">@color/accent</item>
-        <item name="android:colorPrimaryDark">@color/widget_bg</item>
-        <item name="android:colorAccent">@color/accent</item>
+    <!-- App theme, Android 8 to 9: Material light (values-night: dark).
+         Android 10+ uses DeviceDefault DayNight (values-v29), so dialogs,
+         menus and fields look native (One UI on Samsung). Colours are the
+         design tokens (docs/design-system.md). -->
+    <style name="Theme.MuseBoard" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/mb_page</item>
+        <item name="android:statusBarColor">@color/mb_page</item>
+        <item name="android:navigationBarColor">@color/mb_page</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorPrimary">@color/mb_primary</item>
+        <item name="android:colorAccent">@color/mb_primary</item>
+        <item name="android:textColorPrimary">@color/mb_on_surface</item>
+        <item name="android:textColorSecondary">@color/mb_muted</item>
     </style>
 </resources>

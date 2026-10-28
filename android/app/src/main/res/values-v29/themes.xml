@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 10+: the device's own DayNight theme, so dialogs, the
+         long-press menu and the token field look native (One UI on
+         Samsung). Light / dark follows the system. -->
+    <style name="Theme.MuseBoard" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/mb_page</item>
+        <item name="android:statusBarColor">@color/mb_page</item>
+        <item name="android:navigationBarColor">@color/mb_page</item>
+        <item name="android:windowLightStatusBar">@bool/mb_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/mb_light_bars</item>
+        <item name="android:colorAccent">@color/mb_primary</item>
+    </style>
+</resources>

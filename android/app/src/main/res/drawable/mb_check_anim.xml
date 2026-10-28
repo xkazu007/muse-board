@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unchecked → checked: the circle pops in, then the check draws. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/mb_check_on_start">
+    <target
+        android:name="circle"
+        android:animation="@animator/mb_check_pop" />
+    <target
+        android:name="check"
+        android:animation="@animator/mb_check_draw" />
+</animated-vector>

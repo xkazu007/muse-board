@@ -1,37 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- One task row: swipe right = Done (or Undo for a done task), swipe
+     left = Later, long-press = menu. -->
+<tech.mourid.museboard.SwipeRow xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/widget_background"
-    android:orientation="vertical"
-    android:padding="14dp">
+    android:layout_marginTop="8dp">
 
-    <TextView
-        android:id="@+id/task_title"
+    <include layout="@layout/swipe_background" />
+
+    <LinearLayout
+        android:id="@+id/task_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/text"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:background="@drawable/mb_row_bg"
+        android:gravity="center_vertical"
+        android:longClickable="true"
+        android:minHeight="60dp"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="12dp">
 
-    <TextView
-        android:id="@+id/task_detail"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textColor="@color/muted"
-        android:textSize="13sp" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/task_done"
-        android:layout_width="wrap_content"
-        android:layout_height="40dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/btn_done"
-        android:minHeight="40dp"
-        android:text="@string/done"
-        android:textAllCaps="false"
-        android:textColor="#ffffff"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-</LinearLayout>
+            <TextView
+                android:id="@+id/task_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/mb_on_surface"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/task_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/mb_muted"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/task_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textColor="@color/mb_muted"
+            android:textSize="13sp" />
+    </LinearLayout>
+</tech.mourid.museboard.SwipeRow>

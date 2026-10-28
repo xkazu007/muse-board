@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.SizeF
 import android.view.View
@@ -16,9 +17,11 @@ import android.widget.RemoteViews
  *
  * Refresh sources: an AlarmManager tick every 30 minutes (re-armed on
  * boot and on every onUpdate), an explicit broadcast to
- * [WidgetRefreshReceiver] on widget add and after every action. Done and
- * Later go through [WidgetActionReceiver], which first shows the result
- * from [BoardCache] ([showOptimistic]) and then calls the API.
+ * [WidgetRefreshReceiver] on widget add and after every action. Every tap
+ * goes through [WidgetActionReceiver] and stays on the home screen: Later
+ * swaps Done for time chips in the widget itself ([showLaterChoices]), and
+ * Done / a chosen time / Undo update from [BoardCache] first
+ * ([showOptimistic]), then call the API.
  *
  * Framework APIs only (no AndroidX), so the app builds with
  * build-manual.sh as well as Gradle.
@@ -27,8 +30,12 @@ object WidgetUpdater {
     const val ACTION_DONE = "tech.mourid.museboard.ACTION_DONE"
     const val ACTION_SNOOZE = "tech.mourid.museboard.ACTION_SNOOZE"
     const val ACTION_REFRESH = "tech.mourid.museboard.ACTION_REFRESH"
+    const val ACTION_LATER_SHOW = "tech.mourid.museboard.ACTION_LATER_SHOW"
+    const val ACTION_LATER_CANCEL = "tech.mourid.museboard.ACTION_LATER_CANCEL"
+    const val ACTION_UNDO = "tech.mourid.museboard.ACTION_UNDO"
     const val EXTRA_TASK_ID = "task_id"
-    const val EXTRA_UNTIL = "until"
+    const val EXTRA_CHOICE = "later_choice"
+    const val EXTRA_FROM_CHECK = "from_check"
 
     private const val REFRESH_INTERVAL_MS = 30L * 60L * 1000L
     private const val ALARM_REQUEST_CODE = 1001
@@ -48,11 +55,20 @@ object WidgetUpdater {
         R.id.mb_task,
         R.id.mb_then,
     )
+    private val LATER_CHIPS = intArrayOf(R.id.mb_later_1, R.id.mb_later_2, R.id.mb_later_3)
+
+    /** Android 12+ uses layout-v31 where Done is a native CheckBox. */
+    private val CHECKBOX = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    private val DONE_VIEW = if (CHECKBOX) R.id.mb_check else R.id.mb_btn_done
+
     private val HIDEABLE_VIEWS = intArrayOf(
-        R.id.mb_btn_done,
+        DONE_VIEW,
         R.id.mb_btn_later,
+        R.id.mb_then_row,
+        R.id.mb_undo,
+        R.id.mb_later_row,
         R.id.mb_upnext,
-    ) + UP_ROWS
+    ) + UP_ROWS + LATER_CHIPS
 
     // --- Refresh scheduling --------------------------------------------------
 
@@ -142,14 +158,14 @@ object WidgetUpdater {
     fun showOptimistic(context: Context, taskId: Int, done: Boolean, untilMillis: Long?): Boolean {
         val cached = BoardCache.load(context)
         val doneToday = (cached?.doneToday ?: 0) + if (done) 1 else 0
-        BoardCache.setNotice(
-            context,
-            if (done) {
-                context.getString(R.string.done_feedback, doneToday)
-            } else {
-                context.getString(R.string.later_feedback, formatWhen(untilMillis?.let(::toIso)))
-            },
-        )
+        if (done) {
+            BoardCache.setNotice(context, context.getString(R.string.done_feedback, doneToday), undoTaskId = taskId)
+        } else {
+            BoardCache.setNotice(
+                context,
+                context.getString(R.string.later_feedback, formatWhen(untilMillis?.let(::toIso))),
+            )
+        }
         if (cached == null || cached.focus?.id != taskId) return false
         val next = cached.next
         val moved = cached.copy(
@@ -160,6 +176,24 @@ object WidgetUpdater {
         )
         updateAll(context, moved)
         return true
+    }
+
+    /** Later tapped: the widget swaps Done for time chips, in place. Back
+     *  (or any refresh) returns to the normal view. */
+    fun showLaterChoices(context: Context, taskId: Int) {
+        val cached = BoardCache.load(context)
+        val focus = cached?.focus
+        if (cached == null || focus == null || focus.id != taskId) {
+            requestRefresh(context)
+            return
+        }
+        push(context) { laterViews(context, cached, focus) }
+    }
+
+    /** Back from the Later chips, or Undo's first paint: the cached board. */
+    fun showCached(context: Context) {
+        val cached = BoardCache.load(context)
+        if (cached != null) updateAll(context, cached) else requestRefresh(context)
     }
 
     /** The API call behind an optimistic update failed: back to the cached
@@ -197,6 +231,8 @@ object WidgetUpdater {
         val views = RemoteViews(context.packageName, R.layout.widget_focus)
         for (id in TEXT_VIEWS) views.setTextViewText(id, "")
         for (id in HIDEABLE_VIEWS) views.setViewVisibility(id, View.GONE)
+        // A checked box would carry over to the next task: always start clear.
+        if (CHECKBOX) views.setCompoundButtonChecked(R.id.mb_check, false)
         return views
     }
 
@@ -232,22 +268,48 @@ object WidgetUpdater {
                 R.id.mb_task,
                 if (focus.firstStep != null) focus.title else focus.detail.orEmpty(),
             )
-            views.setViewVisibility(R.id.mb_btn_done, View.VISIBLE)
+            views.setViewVisibility(DONE_VIEW, View.VISIBLE)
             views.setViewVisibility(R.id.mb_btn_later, View.VISIBLE)
+            views.setTextViewText(R.id.mb_btn_later, context.getString(R.string.later))
+            if (CHECKBOX) {
+                // The launcher ticks the box itself (instant, animated), then
+                // fires this; WidgetActionReceiver lets the tick play out.
+                views.setOnCheckedChangeResponse(
+                    R.id.mb_check,
+                    RemoteViews.RemoteResponse.fromPendingIntent(checkPendingIntent(context, focus.id)),
+                )
+            } else {
+                views.setOnClickPendingIntent(
+                    R.id.mb_btn_done,
+                    actionPendingIntent(context, ACTION_DONE, focus.id),
+                )
+            }
             views.setOnClickPendingIntent(
-                R.id.mb_btn_done,
-                actionPendingIntent(context, ACTION_DONE, focus.id),
+                R.id.mb_btn_later,
+                actionPendingIntent(context, ACTION_LATER_SHOW, focus.id),
             )
-            views.setOnClickPendingIntent(R.id.mb_btn_later, laterPendingIntent(context, focus))
         } else {
             views.setTextViewText(R.id.mb_step, context.getString(R.string.all_clear))
             views.setTextViewText(R.id.mb_task, context.getString(R.string.all_clear_detail))
         }
+        // Then line: feedback after an action, else what comes next (the
+        // next task, or when a snoozed one comes back).
         val next = board.next
-        views.setTextViewText(
-            R.id.mb_then,
-            notice ?: if (next != null) context.getString(R.string.then, thenLine(next)) else "",
-        )
+        val comingBack = board.plans.firstOrNull()
+        val thenText = notice ?: when {
+            next != null -> context.getString(R.string.then, thenLine(next))
+            focus == null && comingBack != null -> context.getString(R.string.next_plan, thenLine(comingBack))
+            else -> null
+        }
+        if (thenText != null) {
+            views.setViewVisibility(R.id.mb_then_row, View.VISIBLE)
+            views.setTextViewText(R.id.mb_then, thenText)
+        }
+        val undoId = if (notice != null) BoardCache.undoTaskId(context) else null
+        if (undoId != null) {
+            views.setViewVisibility(R.id.mb_undo, View.VISIBLE)
+            views.setOnClickPendingIntent(R.id.mb_undo, actionPendingIntent(context, ACTION_UNDO, undoId))
+        }
 
         val upcoming = board.upcoming.take(UP_ROWS.size)
         if (tall && upcoming.isNotEmpty()) {
@@ -261,9 +323,31 @@ object WidgetUpdater {
         return views
     }
 
+    /** The Later state: "Come back to it…", the task, and one chip per
+     *  choice where Done was; the Later button becomes Back. */
+    private fun laterViews(context: Context, board: BoardResponse, focus: BoardTask): RemoteViews {
+        val views = baseViews(context)
+        views.setTextViewText(R.id.mb_meta, context.getString(R.string.later))
+        views.setTextViewText(R.id.mb_count, context.getString(R.string.done_count_short, board.doneToday))
+        views.setTextViewText(R.id.mb_step, context.getString(R.string.later_title))
+        views.setTextViewText(R.id.mb_task, focus.title)
+        views.setViewVisibility(R.id.mb_later_row, View.VISIBLE)
+        LaterChoice.offered().forEachIndexed { i, choice ->
+            views.setViewVisibility(LATER_CHIPS[i], View.VISIBLE)
+            views.setTextViewText(LATER_CHIPS[i], context.getString(choice.chip))
+            views.setOnClickPendingIntent(LATER_CHIPS[i], laterChipPendingIntent(context, focus.id, choice))
+        }
+        val back = actionPendingIntent(context, ACTION_LATER_CANCEL, focus.id)
+        views.setViewVisibility(R.id.mb_btn_later, View.VISIBLE)
+        views.setTextViewText(R.id.mb_btn_later, context.getString(R.string.back))
+        views.setOnClickPendingIntent(R.id.mb_btn_later, back)
+        views.setOnClickPendingIntent(android.R.id.background, back)
+        return views
+    }
+
     // --- Intents ---------------------------------------------------------------
 
-    /** Done (widget button or reminder action) for [taskId]. */
+    /** A widget or reminder action (Done, Later, Back, Undo) on [taskId]. */
     fun actionPendingIntent(context: Context, action: String, taskId: Int): PendingIntent {
         val intent = Intent(context, WidgetActionReceiver::class.java)
             .setAction(action)
@@ -276,21 +360,36 @@ object WidgetUpdater {
         )
     }
 
-    /** The broadcast LaterActivity sends once a time is picked. */
-    fun snoozeIntent(context: Context, taskId: Int, untilMillis: Long): Intent =
-        Intent(context, WidgetActionReceiver::class.java)
-            .setAction(ACTION_SNOOZE)
+    /** The checkbox's Done. Mutable (Android 12+ only) because the launcher
+     *  fills in the checked state; the intent is explicit, so that's safe.
+     *  [EXTRA_FROM_CHECK] tells the receiver to wait for the tick animation. */
+    private fun checkPendingIntent(context: Context, taskId: Int): PendingIntent {
+        val intent = Intent(context, WidgetActionReceiver::class.java)
+            .setAction(ACTION_DONE)
+            .setData(Uri.parse("museboard://check/$taskId"))
             .putExtra(EXTRA_TASK_ID, taskId)
-            .putExtra(EXTRA_UNTIL, untilMillis)
-
-    private fun laterPendingIntent(context: Context, task: BoardTask): PendingIntent {
-        val intent = Intent(context, LaterActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            .putExtra(EXTRA_TASK_ID, task.id)
-            .putExtra(LaterActivity.EXTRA_TITLE, task.title)
-        return PendingIntent.getActivity(
+            .putExtra(EXTRA_FROM_CHECK, true)
+        return PendingIntent.getBroadcast(
             context,
-            task.id,
+            taskId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+    }
+
+    /** One Later choice (widget chip, reminder action, icon shortcut):
+     *  snooze [taskId] with [choice], resolved at tap time.
+     *  The data URI keeps the three chips' PendingIntents apart (extras
+     *  alone don't). */
+    fun laterChipPendingIntent(context: Context, taskId: Int, choice: LaterChoice): PendingIntent {
+        val intent = Intent(context, WidgetActionReceiver::class.java)
+            .setAction(ACTION_SNOOZE)
+            .setData(Uri.parse("museboard://later/$taskId/${choice.name}"))
+            .putExtra(EXTRA_TASK_ID, taskId)
+            .putExtra(EXTRA_CHOICE, choice.name)
+        return PendingIntent.getBroadcast(
+            context,
+            taskId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

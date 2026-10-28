@@ -130,10 +130,18 @@ and the rules below.
 - **Android: framework APIs only.** No AndroidX, no Glance, no Compose. The
   app must build with `android/build-manual.sh` (aapt2 + kotlinc + d8), which
   has no dependency resolution. Gradle builds the same code.
-- **Widget layouts** (`res/layout/widget_*.xml`) may only use RemoteViews
+- **Widget layouts** (`res/layout*/widget_*.xml`) may only use RemoteViews
   classes (LinearLayout, FrameLayout, TextView, ImageView, Button, ...). A
   plain `<View>` builds fine and then fails on the phone with "Couldn't add
-  widget". `build-manual.sh` enforces the allowlist.
+  widget". CheckBox / Switch / RadioButton only in `layout-v31` (Android
+  12+). `build-manual.sh` enforces both.
+- **Two widget layouts**: `layout/widget_focus.xml` and its Android 12+
+  twin `layout-v31/widget_focus.xml` (Done is a native CheckBox there).
+  Change both.
+- **Gestures**: widgets can't take long-press or swipe. Those live in the
+  app (`SwipeRow`, long-press menus), the icon shortcuts (`ShortcutSync`)
+  and the reminder actions. See "Native gestures" in
+  `docs/design-system.md`.
 - **Every widget update resets every view** (`WidgetUpdater.baseViews`): the
   launcher applies updates on top of what is on screen, so anything you
   don't set keeps its old value.

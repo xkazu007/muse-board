@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- First frame of the check animation (mb_check_anim): circle slightly
+     small, check not drawn yet. Ends identical to mb_check_on. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="60dp"
+    android:height="60dp"
+    android:viewportWidth="60"
+    android:viewportHeight="60">
+    <group
+        android:name="circle"
+        android:pivotX="30"
+        android:pivotY="30"
+        android:scaleX="0.82"
+        android:scaleY="0.82">
+        <path
+            android:fillColor="@color/mb_primary"
+            android:pathData="M1.5,30 a28.5,28.5 0 1,0 57,0 a28.5,28.5 0 1,0 -57,0" />
+    </group>
+    <path
+        android:name="check"
+        android:fillColor="#00000000"
+        android:pathData="M19,31 L26.5,38.5 L41,23.5"
+        android:strokeColor="@color/mb_on_primary"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4"
+        android:trimPathEnd="0" />
+</vector>

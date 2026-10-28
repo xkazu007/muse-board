@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Done checkbox's button (widget on Android 12+, and the app): a
+     native CheckBox, so the system toggles it instantly on tap and the
+     transition plays before the app even wakes up. -->
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/mb_state_on"
+        android:drawable="@drawable/mb_check_on"
+        android:state_checked="true" />
+    <item
+        android:id="@+id/mb_state_off"
+        android:drawable="@drawable/mb_check_off" />
+    <transition
+        android:drawable="@drawable/mb_check_anim"
+        android:fromId="@id/mb_state_off"
+        android:toId="@id/mb_state_on" />
+</animated-selector>
