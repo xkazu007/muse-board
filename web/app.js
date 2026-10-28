@@ -22,6 +22,8 @@ async function api(path, method, body) {
     method: method || "GET",
     headers: {
       Authorization: "Bearer " + token,
+      // Who's writing, for the activity feed Muse reads.
+      "X-Board-Client": "web",
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -119,6 +121,68 @@ function dueLabel(t) {
 function sizeOf(min) {
   return min <= 15 ? "quick" : min <= 45 ? "short" : min <= 90 ? "long" : "big";
 }
+
+/** Checklist progress from a task's blocks: [ticked, total], or null. */
+function checkProgress(t) {
+  const checks = (Array.isArray(t.blocks) ? t.blocks : []).filter((b) => b.type === "check");
+  return checks.length ? [checks.filter((b) => b.done).length, checks.length] : null;
+}
+
+const FIELD_LABELS = {
+  title: "Title", first_step: "First step", plan_at: "When", plan_where: "Where", due_at: "Due",
+  estimate_min: "Takes", url: "Link", group: "Group", detail: "Notes", position: "Order", blocks: "Page",
+};
+
+/** What applying a suggestion does, one line each: "First step: …", "New: …". */
+function suggestionLines(s) {
+  const lines = [];
+  for (const [key, value] of Object.entries(s.changes || {})) {
+    if (!FIELD_LABELS[key]) continue;
+    let text;
+    if (value === null) text = "removed";
+    else if (key === "plan_at" || key === "due_at") text = fmtWhen(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : value + "Z") || value;
+    else if (key === "estimate_min") text = "~" + fmtMinutes(value);
+    else if (key === "blocks") text = "updated";
+    else if (key === "position") text = value === 0 ? "make it the focus" : String(value);
+    else text = String(value);
+    lines.push(FIELD_LABELS[key] + ": " + text);
+  }
+  for (const t of s.new_tasks || []) lines.push("New: " + t.title);
+  return lines;
+}
+
+let suggestionId = null;
+
+function showSuggestion(s) {
+  const card = $("suggestion");
+  suggestionId = s ? s.id : null;
+  card.classList.toggle("hidden", !s);
+  if (!s) return;
+  $("suggestion-title").textContent = s.title;
+  $("suggestion-detail").textContent = s.detail || "";
+  const box = $("suggestion-lines");
+  box.replaceChildren(...suggestionLines(s).map((line) => {
+    const div = document.createElement("div");
+    div.textContent = line;
+    return div;
+  }));
+}
+
+async function resolveSuggestion(apply) {
+  const id = suggestionId;
+  if (!id) return;
+  $("suggestion").classList.add("hidden");
+  try {
+    await api("/api/suggestions/" + id + (apply ? "/apply" : "/dismiss"), "POST");
+    toast(apply ? "Applied." : "Dismissed.");
+  } catch (e) {
+    toast("Couldn't save that. Try again.");
+  }
+  loadBoard();
+}
+
+$("suggestion-apply").addEventListener("click", () => resolveSuggestion(true));
+$("suggestion-dismiss").addEventListener("click", () => resolveSuggestion(false));
 
 /** Fills a chip element, or hides it when [cls] is null. */
 function setChip(el, cls, text, extra) {
@@ -227,6 +291,13 @@ function taskRow(t) {
     sub.textContent = "Start with: " + t.first_step;
     main.append(sub);
   }
+  const progress = checkProgress(t);
+  if (progress) {
+    const p = document.createElement("div");
+    p.className = "row-progress";
+    p.textContent = "✓ " + progress[0] + "/" + progress[1];
+    main.append(p);
+  }
   row.append(main);
   // Right: the time (in the deadline's colour when it's near) and the
   // estimate chip under it.
@@ -273,8 +344,11 @@ async function loadBoard() {
       $("focus-est"),
       f && f.estimate_min ? "est-" + sizeOf(f.estimate_min) : null,
       f && f.estimate_min ? "~" + fmtMinutes(f.estimate_min) : "",
-      "focus-est",
     );
+    const progress = f && checkProgress(f);
+    $("focus-progress").textContent = progress ? "✓ " + progress[0] + "/" + progress[1] : "";
+    $("focus-bottom").classList.toggle("hidden", !(progress || (f && f.estimate_min)));
+    showSuggestion(b.suggestion);
     if (f) {
       $("focus-meta").textContent = planLine(f);
       $("focus-step").textContent = f.first_step || f.title;

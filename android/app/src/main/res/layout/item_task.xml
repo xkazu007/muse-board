@@ -47,6 +47,16 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
 
+            <!-- Checklist progress from the task's blocks: "✓ 2/5" -->
+            <TextView
+                android:id="@+id/task_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textColor="@color/mb_muted"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <!-- "Too big?" (issue #7): after two snoozes -->
             <TextView
                 android:id="@+id/task_too_big"

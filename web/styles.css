@@ -155,7 +155,21 @@ button:active:not(:disabled), .pill:active, .row:active, .block-btn:active, summ
 /* Chips: the deadline, warmer as it nears (never red), and the estimate,
    a cool scale (longer = further along). */
 .chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-.focus-est { grid-column: 1 / -1; justify-self: end; margin-top: 8px; }
+.focus-bottom { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; font-size: 14px; }
+.row-progress { margin-top: 3px; font-size: 13px; color: var(--muted); }
+
+/* Muse's suggestion card */
+.suggestion { margin-top: 14px; padding: 18px 20px 12px; }
+.suggestion-head { display: flex; gap: 10px; align-items: flex-start; }
+.suggestion-head svg { flex: none; margin-top: 2px; }
+.suggestion h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.suggestion > p { margin: 4px 0 0 30px; font-size: 14px; }
+.suggestion > p:empty { display: none; }
+.suggestion-lines { margin-top: 10px; padding: 10px 14px; border-radius: 16px; background: var(--inset); font-size: 14px; line-height: 1.7; }
+.suggestion-lines:empty { display: none; }
+.suggestion-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.suggestion-actions .pill { align-self: center; }
+.text-btn { min-height: 44px; padding: 0 16px; border: 0; border-radius: 16px; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
 .row .chip { padding: 3px 8px; font-size: 12px; }
 .due-overdue { color: var(--due-overdue); background: var(--due-overdue-bg); }
 .due-today { color: var(--due-today); background: var(--due-today-bg); }

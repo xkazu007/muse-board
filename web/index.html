@@ -61,8 +61,25 @@
         </button>
         <button id="btn-later" class="pill" aria-haspopup="dialog">Later</button>
       </div>
-      <!-- Estimate, bottom right -->
-      <span id="focus-est" class="chip focus-est hidden"></span>
+      <!-- Bottom row: checklist progress, estimate in the corner -->
+      <div id="focus-bottom" class="focus-bottom hidden">
+        <span id="focus-progress" class="muted"></span>
+        <span id="focus-est" class="chip hidden"></span>
+      </div>
+    </article>
+
+    <!-- Muse's suggestion: one at a time, the owner decides -->
+    <article id="suggestion" class="card suggestion hidden">
+      <div class="suggestion-head">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="var(--accent)" d="M12 2.5C12.6 8 16 11.4 21.5 12 16 12.6 12.6 16 12 21.5 11.4 16 8 12.6 2.5 12 8 11.4 11.4 8 12 2.5Z"/></svg>
+        <h3 id="suggestion-title"></h3>
+      </div>
+      <p id="suggestion-detail" class="muted"></p>
+      <div id="suggestion-lines" class="suggestion-lines"></div>
+      <div class="suggestion-actions">
+        <button id="suggestion-dismiss" class="text-btn">Not now</button>
+        <button id="suggestion-apply" class="pill">Apply</button>
+      </div>
     </article>
 
     <h2 id="then-title" class="section-title">Then</h2>

@@ -178,6 +178,14 @@ name above its card is 14sp bold `muted`.
   `accent`; ticked items fade to 55% and strike through; the whole row is
   the 48dp target), toggle (chevron that turns 90°, body indented under
   it). No filled yellow: Done stays the only primary action.
+- **Muse's suggestion** (`suggestion` on the board): one card under the
+  focus, only the oldest pending one. A small `accent` spark, the title
+  (16sp bold), one muted line of why, then what Apply changes on `inset`
+  ("First step: …", "New: …"). **Not now** (text, `muted`) and **Apply**
+  (tonal pill): never the yellow fill, Done stays the only primary action.
+  Both hide the card at once.
+- **Checklist progress**: "✓ 2/5" (muted, 13 to 14sp) from a task's
+  `check` blocks: bottom left of the focus card, under the row's detail.
 - **Too big?** A small tonal chip on a task snoozed twice since its step
   last changed. Opens the detail page with the first step focused and "Try
   a first step that takes under 2 minutes." Neutral copy, never red.

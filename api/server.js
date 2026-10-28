@@ -20,7 +20,18 @@
  *   POST  /api/tasks/:id/snooze    -> "Later": { until? } hides the task
  *                                     until then and re-plans it for then;
  *                                     no `until` = until tomorrow 09:00
+ *   GET   /api/activity            -> what changed, oldest first:
+ *                                     ?since=<event id>&exclude=<source>
+ *   GET   /api/suggestions         -> Muse's suggestions (?status=pending)
+ *   POST  /api/suggestions         -> Muse suggests a change (title, detail,
+ *                                     task_id + changes, and/or new_tasks)
+ *   POST  /api/suggestions/:id/apply   -> the owner applies it
+ *   POST  /api/suggestions/:id/dismiss -> the owner dismisses it
  *   GET   /health                  -> { ok: true } (no auth)
+ *
+ * Writers say who they are with `X-Board-Client: app | web | muse`; the
+ * activity feed records it, so Muse can tell the owner's changes from its
+ * own.
  *
  * Task fields: title, detail (notes, up to 4000 chars), first_step (the
  * 2-minute starter the widget shows big), due_at, plan_at + plan_where (the
@@ -91,6 +102,26 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS url TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_group TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS blocks JSONB;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimate_min INT;
+CREATE TABLE IF NOT EXISTS activity (
+  id BIGSERIAL PRIMARY KEY,
+  at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  task_id INT,
+  kind TEXT NOT NULL,
+  source TEXT,
+  data JSONB
+);
+CREATE TABLE IF NOT EXISTS suggestions (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  status TEXT NOT NULL DEFAULT 'pending',
+  resolved_at TIMESTAMPTZ,
+  task_id INT,
+  title TEXT NOT NULL,
+  detail TEXT,
+  changes JSONB,
+  new_tasks JSONB
+);
+DELETE FROM activity WHERE at < now() - interval '180 days';
 UPDATE tasks
 SET snoozed_until = ((snoozed_at AT TIME ZONE '${TZ}')::date + 1)::timestamp AT TIME ZONE '${TZ}'
 WHERE snoozed_at IS NOT NULL AND snoozed_until IS NULL;
@@ -357,6 +388,125 @@ function parseId(req, res) {
   return id;
 }
 
+// --- Activity feed -----------------------------------------------------------
+//
+// Every write is logged (task created / updated / completed / reopened /
+// snoozed, suggestion applied / dismissed) with who made it, so Muse can
+// keep its own per-task notes current and notice patterns. Kept 180 days.
+
+/** Who is writing, from `X-Board-Client` ("app", "web", "muse"), or null. */
+function sourceOf(req) {
+  const value = String(req.headers["x-board-client"] || "").trim().toLowerCase();
+  return /^[a-z][a-z0-9-]{0,19}$/.test(value) ? value : null;
+}
+
+async function logActivity(db, taskId, kind, source, data) {
+  await db.query(
+    "INSERT INTO activity (task_id, kind, source, data) VALUES ($1, $2, $3, $4)",
+    [taskId, kind, source, data ? JSON.stringify(data) : null],
+  );
+}
+
+/** What an update really changed: `changes` (field -> new value) and, for
+ *  checklist blocks, which items were ticked / unticked. Null if nothing. */
+function describeUpdate(before, after, body) {
+  const changes = {};
+  for (const name of Object.keys(FIELDS)) {
+    if (body[name] === undefined || name === "blocks") continue;
+    const column = FIELDS[name].column || name;
+    const a = FIELDS[name].kind === "time" ? iso(before[column]) : before[column];
+    const b = FIELDS[name].kind === "time" ? iso(after[column]) : after[column];
+    if (a !== b) changes[name] = b;
+  }
+  const data = Object.keys(changes).length ? { changes } : {};
+  if (body.blocks !== undefined) Object.assign(data, describeBlocks(before.blocks || [], after.blocks || []));
+  return Object.keys(data).length ? data : null;
+}
+
+function describeBlocks(a, b) {
+  const doneByText = (list) => new Map(list.filter((x) => x.type === "check").map((x) => [x.text, x.done]));
+  const was = doneByText(a);
+  const ticked = [];
+  const unticked = [];
+  for (const [text, done] of doneByText(b)) {
+    if (was.has(text) && was.get(text) !== done) (done ? ticked : unticked).push(text);
+  }
+  const shape = (list) => JSON.stringify(list.map((x) => ({ ...x, done: undefined })));
+  const out = {};
+  if (ticked.length) out.ticked = ticked;
+  if (unticked.length) out.unticked = unticked;
+  if (shape(a) !== shape(b)) out.blocks_edited = true;
+  return out;
+}
+
+// --- Writing tasks (shared by the task routes and applied suggestions) ------
+
+/** Inserts a validated task body; returns the new row. */
+async function insertTask(db, body) {
+  const columns = [];
+  const values = [];
+  for (const name of Object.keys(FIELDS)) {
+    if (body[name] === undefined) continue;
+    columns.push(FIELDS[name].column || name);
+    values.push(storedValue(name, body[name]));
+  }
+  if (!columns.includes("position")) {
+    const { rows } = await db.query("SELECT COALESCE(MAX(position), 0)::int + 1 AS p FROM tasks");
+    columns.push("position");
+    values.push(rows[0].p);
+  }
+  const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
+  const { rows } = await db.query(
+    `INSERT INTO tasks (${columns.join(", ")}) VALUES (${placeholders}) RETURNING ${TASK_COLUMNS}`,
+    values,
+  );
+  return rows[0];
+}
+
+/** Applies a validated, non-empty update; returns { before, after } or
+ *  null for an unknown id. Run inside a transaction ([db] = a client). */
+async function updateTaskRow(db, id, body) {
+  const { rows: old } = await db.query(`SELECT ${TASK_COLUMNS} FROM tasks WHERE id = $1 FOR UPDATE`, [id]);
+  if (old.length === 0) return null;
+  const sets = [];
+  const values = [id];
+  for (const name of Object.keys(FIELDS)) {
+    if (body[name] === undefined) continue;
+    values.push(storedValue(name, body[name]));
+    sets.push(`${FIELDS[name].column || name} = $${values.length}`);
+  }
+  // A rewritten first step is a fresh start: "Too big?" goes away.
+  if (body.first_step !== undefined) sets.push("snooze_count = 0");
+  const { rows } = await db.query(
+    `UPDATE tasks SET ${sets.join(", ")} WHERE id = $1 RETURNING ${TASK_COLUMNS}`,
+    values,
+  );
+  return { before: old[0], after: rows[0] };
+}
+
+/** Runs [work] in a transaction on one pooled client. */
+async function inTransaction(work) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Only the editable fields of [body] (unknown keys dropped). */
+function pickFields(body) {
+  const out = {};
+  for (const name of Object.keys(FIELDS)) if (body[name] !== undefined) out[name] = body[name];
+  return out;
+}
+
 app.get("/health", (_req, res) => res.json({ ok: true, service: "muse-board" }));
 
 app.get("/api/board", requireAuth, async (_req, res) => {
@@ -382,6 +532,7 @@ app.get("/api/board", requireAuth, async (_req, res) => {
          AND (completed_at AT TIME ZONE $1)::date = (now() AT TIME ZONE $1)::date`,
       [TZ],
     );
+    const { rows: pending } = await pool.query(`${SUGGESTION_SQL} WHERE s.status = 'pending' ORDER BY s.id LIMIT 1`);
     res.json({
       date: doneRows[0].today,
       focus,
@@ -389,6 +540,8 @@ app.get("/api/board", requireAuth, async (_req, res) => {
       upcoming,
       plans: plans.map(publicTask),
       doneToday: doneRows[0].n,
+      // Muse's oldest open suggestion, one at a time (or null).
+      suggestion: pending.length ? publicSuggestion(pending[0]) : null,
     });
   } catch (err) {
     console.error("GET /api/board failed:", err);
@@ -413,27 +566,9 @@ app.post("/api/tasks", requireAuth, async (req, res) => {
   const invalid = validateTaskFields(body, { creating: true });
   if (invalid) return res.status(400).json({ error: invalid });
   try {
-    const columns = [];
-    const values = [];
-    for (const name of Object.keys(FIELDS)) {
-      if (body[name] === undefined) continue;
-      columns.push(FIELDS[name].column || name);
-      values.push(storedValue(name, body[name]));
-    }
-    if (!columns.includes("position")) {
-      const { rows } = await pool.query(
-        "SELECT COALESCE(MAX(position), 0)::int + 1 AS p FROM tasks",
-      );
-      columns.push("position");
-      values.push(rows[0].p);
-    }
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
-    const { rows } = await pool.query(
-      `INSERT INTO tasks (${columns.join(", ")}) VALUES (${placeholders})
-       RETURNING ${TASK_COLUMNS}`,
-      values,
-    );
-    res.status(201).json({ task: publicTask(rows[0]) });
+    const row = await insertTask(pool, body);
+    await logActivity(pool, row.id, "created", sourceOf(req), { fields: pickFields(body) });
+    res.status(201).json({ task: publicTask(row) });
   } catch (err) {
     if (badTime(err, res)) return;
     console.error("POST /api/tasks failed:", err);
@@ -447,25 +582,19 @@ async function updateTask(req, res) {
   const body = req.body || {};
   const invalid = validateTaskFields(body, { creating: false });
   if (invalid) return res.status(400).json({ error: invalid });
-  const sets = [];
-  const values = [id];
-  for (const name of Object.keys(FIELDS)) {
-    if (body[name] === undefined) continue;
-    values.push(storedValue(name, body[name]));
-    sets.push(`${FIELDS[name].column || name} = $${values.length}`);
-  }
-  if (sets.length === 0) {
+  if (Object.keys(pickFields(body)).length === 0) {
     return res.status(400).json({ error: "nothing to update" });
   }
-  // A rewritten first step is a fresh start: "Too big?" goes away.
-  if (body.first_step !== undefined) sets.push("snooze_count = 0");
   try {
-    const { rows } = await pool.query(
-      `UPDATE tasks SET ${sets.join(", ")} WHERE id = $1 RETURNING ${TASK_COLUMNS}`,
-      values,
-    );
-    if (rows.length === 0) return res.status(404).json({ error: "task not found" });
-    res.json({ task: publicTask(rows[0]) });
+    const result = await inTransaction(async (db) => {
+      const done = await updateTaskRow(db, id, body);
+      if (!done) return null;
+      const data = describeUpdate(done.before, done.after, body);
+      if (data) await logActivity(db, id, "updated", sourceOf(req), data);
+      return done.after;
+    });
+    if (!result) return res.status(404).json({ error: "task not found" });
+    res.json({ task: publicTask(result) });
   } catch (err) {
     if (badTime(err, res)) return;
     console.error(`${req.method} /api/tasks/:id failed:`, err);
@@ -502,6 +631,7 @@ async function changeStatus(req, res, setSql, fromStatus, label) {
     if (rows.length === 0) {
       return res.status(404).json({ error: `task not found or not ${fromStatus}` });
     }
+    await logActivity(pool, id, label === "complete" ? "completed" : "reopened", sourceOf(req), null);
     res.json({ task: publicTask(rows[0]) });
   } catch (err) {
     console.error(`POST /api/tasks/:id/${label} failed:`, err);
@@ -560,10 +690,210 @@ app.post("/api/tasks/:id/snooze", requireAuth, async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: "task not found or not open" });
     }
+    await logActivity(pool, id, "snoozed", sourceOf(req), {
+      until: iso(rows[0].snoozed_until),
+      snooze_count: rows[0].snooze_count,
+    });
     res.json({ task: publicTask(rows[0]) });
   } catch (err) {
     if (badTime(err, res)) return;
     console.error("POST /api/tasks/:id/snooze failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+// --- Activity and suggestions routes -----------------------------------------
+
+app.get("/api/activity", requireAuth, async (req, res) => {
+  const since = req.query.since === undefined ? null : Number(req.query.since);
+  if (since !== null && (!Number.isInteger(since) || since < 0)) {
+    return res.status(400).json({ error: "since must be an event id (a whole number)" });
+  }
+  const limit = Math.min(Math.max(parseInt(req.query.limit || "100", 10) || 100, 1), 500);
+  const exclude = req.query.exclude ? String(req.query.exclude).toLowerCase() : null;
+  try {
+    // With `since`: the events after it, oldest first. Without: the latest
+    // [limit] events, still oldest first.
+    const { rows } = await pool.query(
+      `SELECT * FROM (
+         SELECT a.id, a.at, a.task_id, t.title AS task_title, a.kind, a.source, a.data
+         FROM activity a LEFT JOIN tasks t ON t.id = a.task_id
+         WHERE ($1::bigint IS NULL OR a.id > $1)
+           AND ($2::text IS NULL OR a.source IS DISTINCT FROM $2)
+         ORDER BY a.id ${since === null ? "DESC" : "ASC"}
+         LIMIT $3
+       ) e ORDER BY id ASC`,
+      [since, exclude, limit],
+    );
+    const events = rows.map((r) => ({
+      id: Number(r.id),
+      at: iso(r.at),
+      task_id: r.task_id,
+      task_title: r.task_title,
+      kind: r.kind,
+      source: r.source,
+      data: r.data,
+    }));
+    res.json({ events, last_id: events.length ? events[events.length - 1].id : since });
+  } catch (err) {
+    console.error("GET /api/activity failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+const SUGGESTION_SQL = `
+SELECT s.*, t.title AS task_title
+FROM suggestions s LEFT JOIN tasks t ON t.id = s.task_id`;
+
+function publicSuggestion(r) {
+  return {
+    id: r.id,
+    status: r.status,
+    created_at: iso(r.created_at),
+    resolved_at: iso(r.resolved_at),
+    task_id: r.task_id,
+    task_title: r.task_title,
+    title: r.title,
+    detail: r.detail,
+    changes: r.changes,
+    new_tasks: r.new_tasks,
+  };
+}
+
+const MAX_NEW_TASKS = 5;
+
+/** Checks a suggestion body; returns an error message or null. */
+async function validateSuggestion(body) {
+  if (typeof body.title !== "string" || !body.title.trim()) return "title is required";
+  if (body.title.trim().length > 120) return "title is longer than 120 characters";
+  if (body.detail != null && (typeof body.detail !== "string" || body.detail.length > 500)) {
+    return "detail must be text up to 500 characters";
+  }
+  const hasChanges = body.changes != null;
+  const hasNew = body.new_tasks != null;
+  if (!hasChanges && !hasNew) return "a suggestion needs changes (with task_id) or new_tasks";
+  if (hasChanges) {
+    if (!Number.isInteger(body.task_id)) return "changes need a task_id";
+    if (typeof body.changes !== "object" || Array.isArray(body.changes)) return "changes must be an object";
+    if (Object.keys(pickFields(body.changes)).length === 0) return "changes has no task fields";
+    const invalid = validateTaskFields(body.changes, { creating: false });
+    if (invalid) return "changes: " + invalid;
+    const { rows } = await pool.query("SELECT 1 FROM tasks WHERE id = $1", [body.task_id]);
+    if (rows.length === 0) return "task_id is not a task";
+  }
+  if (hasNew) {
+    if (!Array.isArray(body.new_tasks) || body.new_tasks.length === 0 || body.new_tasks.length > MAX_NEW_TASKS) {
+      return `new_tasks must be a list of 1 to ${MAX_NEW_TASKS} tasks`;
+    }
+    for (const [i, t] of body.new_tasks.entries()) {
+      if (!t || typeof t !== "object" || Array.isArray(t)) return `new_tasks[${i}] must be an object`;
+      const invalid = validateTaskFields(t, { creating: true });
+      if (invalid) return `new_tasks[${i}]: ${invalid}`;
+    }
+  }
+  return null;
+}
+
+app.post("/api/suggestions", requireAuth, async (req, res) => {
+  const body = req.body || {};
+  try {
+    const invalid = await validateSuggestion(body);
+    if (invalid) return res.status(400).json({ error: invalid });
+    const { rows } = await pool.query(
+      `INSERT INTO suggestions (task_id, title, detail, changes, new_tasks)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [
+        Number.isInteger(body.task_id) ? body.task_id : null,
+        body.title.trim(),
+        body.detail ? body.detail.trim() : null,
+        body.changes != null ? JSON.stringify(pickFields(body.changes)) : null,
+        body.new_tasks != null ? JSON.stringify(body.new_tasks.map(pickFields)) : null,
+      ],
+    );
+    const { rows: full } = await pool.query(`${SUGGESTION_SQL} WHERE s.id = $1`, [rows[0].id]);
+    res.status(201).json({ suggestion: publicSuggestion(full[0]) });
+  } catch (err) {
+    if (badTime(err, res)) return;
+    console.error("POST /api/suggestions failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+app.get("/api/suggestions", requireAuth, async (req, res) => {
+  const status = String(req.query.status || "pending");
+  if (!["pending", "applied", "dismissed", "all"].includes(status)) {
+    return res.status(400).json({ error: "status must be pending, applied, dismissed or all" });
+  }
+  try {
+    const { rows } = await pool.query(
+      `${SUGGESTION_SQL} WHERE ($1 = 'all' OR s.status = $1) ORDER BY s.id DESC LIMIT 100`,
+      [status],
+    );
+    res.json({ suggestions: rows.map(publicSuggestion) });
+  } catch (err) {
+    console.error("GET /api/suggestions failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+/** Applies a pending suggestion in one transaction: its changes to its
+ *  task, then its new tasks. 404 if it isn't pending (or the task is gone). */
+app.post("/api/suggestions/:id/apply", requireAuth, async (req, res) => {
+  const id = parseId(req, res);
+  if (id === null) return;
+  const source = sourceOf(req);
+  try {
+    const result = await inTransaction(async (db) => {
+      const { rows } = await db.query(
+        "SELECT * FROM suggestions WHERE id = $1 AND status = 'pending' FOR UPDATE",
+        [id],
+      );
+      if (rows.length === 0) return { missing: "suggestion not found or not pending" };
+      const sug = rows[0];
+      const created = [];
+      if (sug.changes) {
+        const done = await updateTaskRow(db, sug.task_id, sug.changes);
+        if (!done) return { missing: "the suggested task no longer exists" };
+        const data = describeUpdate(done.before, done.after, sug.changes);
+        if (data) await logActivity(db, sug.task_id, "updated", source, { ...data, suggestion_id: id });
+      }
+      for (const t of sug.new_tasks || []) {
+        const row = await insertTask(db, t);
+        created.push(row.id);
+        await logActivity(db, row.id, "created", source, { fields: t, suggestion_id: id });
+      }
+      await db.query("UPDATE suggestions SET status = 'applied', resolved_at = now() WHERE id = $1", [id]);
+      await logActivity(db, sug.task_id, "suggestion_applied", source, { suggestion_id: id, title: sug.title, created });
+      return { created };
+    });
+    if (result.missing) return res.status(404).json({ error: result.missing });
+    const { rows } = await pool.query(`${SUGGESTION_SQL} WHERE s.id = $1`, [id]);
+    res.json({ suggestion: publicSuggestion(rows[0]), created: result.created });
+  } catch (err) {
+    if (badTime(err, res)) return;
+    console.error("POST /api/suggestions/:id/apply failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
+app.post("/api/suggestions/:id/dismiss", requireAuth, async (req, res) => {
+  const id = parseId(req, res);
+  if (id === null) return;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE suggestions SET status = 'dismissed', resolved_at = now()
+       WHERE id = $1 AND status = 'pending' RETURNING task_id, title`,
+      [id],
+    );
+    if (rows.length === 0) return res.status(404).json({ error: "suggestion not found or not pending" });
+    await logActivity(pool, rows[0].task_id, "suggestion_dismissed", sourceOf(req), {
+      suggestion_id: id,
+      title: rows[0].title,
+    });
+    const { rows: full } = await pool.query(`${SUGGESTION_SQL} WHERE s.id = $1`, [id]);
+    res.json({ suggestion: publicSuggestion(full[0]) });
+  } catch (err) {
+    console.error("POST /api/suggestions/:id/dismiss failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
