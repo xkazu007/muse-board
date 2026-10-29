@@ -10,14 +10,17 @@ import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.view.DragEvent
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
@@ -121,6 +124,19 @@ class MainActivity : Activity() {
             true
         }
         findViewById<View>(R.id.focus_card).onTap { board?.focus?.let { openTask(it) } }
+        // Drop a dragged task on the focus card: do it now.
+        focusRow.setOnDragListener { v, e ->
+            val moving = e.localState as? BoardTask ?: return@setOnDragListener false
+            when (e.action) {
+                DragEvent.ACTION_DRAG_ENTERED -> v.foreground = getDrawable(R.drawable.mb_drop_focus)
+                DragEvent.ACTION_DRAG_EXITED, DragEvent.ACTION_DRAG_ENDED -> v.foreground = null
+                DragEvent.ACTION_DROP -> {
+                    v.foreground = null
+                    focusNow(moving)
+                }
+            }
+            true
+        }
         findViewById<View>(R.id.focus_too_big).onTap {
             board?.focus?.let { openTask(it, shrink = true) }
         }
@@ -483,6 +499,7 @@ class MainActivity : Activity() {
                 onTap { url?.let { openLink(this@MainActivity, it) } }
             }
             row.findViewById<View>(R.id.task_row).onTap { openTask(task) }
+            if (kind == Kind.OPEN) enableDrag(row, task)
             if (kind == Kind.DONE) {
                 title.alpha = 0.55f
                 row.findViewById<TextView>(R.id.swipe_label_start).setText(R.string.undo)
@@ -522,7 +539,7 @@ class MainActivity : Activity() {
             }
             nb to nts
         }
-        showUndoBar(getString(R.string.done_feedback, count), task)
+        showUndoBar(getString(R.string.done_feedback, count)) { reopen(task) }
         runAction { t -> ApiClient.completeTask(t, task.id) }
     }
 
@@ -595,6 +612,106 @@ class MainActivity : Activity() {
         runAction { t -> ApiClient.snoozeTask(t, task.id, until) }
     }
 
+    // --- Switching and reordering ------------------------------------------
+
+    /** Open tasks in queue order (ids), as the server orders them. */
+    private fun openOrder(ts: List<BoardTask>): List<Int> =
+        ts.filter { it.status == "open" }.sortedWith(compareBy({ it.position }, { it.id })).map { it.id }
+
+    /** Open tasks in [order] get positions 1, 2, 3… like the server's. */
+    private fun reposition(ts: List<BoardTask>, order: List<Int>): List<BoardTask> {
+        val pos = order.withIndex().associate { (i, id) -> id to i + 1 }
+        return ts.map { t -> pos[t.id]?.let { t.copy(position = it) } ?: t }
+    }
+
+    /** The board after a reorder: focus and next are the first two open
+     *  tasks not hidden by Later. */
+    private fun withQueue(b: BoardResponse, ts: List<BoardTask>): BoardResponse {
+        val now = System.currentTimeMillis()
+        val visible = ts.filter { it.status == "open" && (parseIso(it.snoozedUntil) ?: 0L) <= now }
+            .sortedWith(compareBy({ it.position }, { it.id }))
+        return b.copy(focus = visible.getOrNull(0), next = visible.getOrNull(1))
+    }
+
+    /** "Do this now": [task] becomes the focus, the current one is paused
+     *  (next in line). Undo switches back. */
+    private fun focusNow(task: BoardTask, undoable: Boolean = true) {
+        markHintSeen()
+        val paused = board?.focus
+        if (paused?.id == task.id) return
+        val order = listOf(task.id) + openOrder(tasks).filter { it != task.id }
+        optimistic { b, ts ->
+            val nts = reposition(ts.map { if (it.id == task.id) it.copy(snoozedUntil = null) else it }, order)
+            withQueue(b, nts) to nts
+        }
+        val undo = if (undoable && paused != null) ({ focusNow(paused, undoable = false) }) else null
+        showUndoBar(
+            if (paused != null) getString(R.string.switched, paused.title) else getString(R.string.switched_short),
+            undo,
+        )
+        runAction { t -> ApiClient.focusTask(t, task.id) }
+    }
+
+    /** Touch the handle to drag a Then row; drop it on another row (above
+     *  or below, a yellow line shows where) or on the focus card. */
+    private fun enableDrag(row: SwipeRow, task: BoardTask) {
+        val handle = row.findViewById<View>(R.id.task_drag)
+        handle.visibility = View.VISIBLE
+        handle.setOnTouchListener { v, e ->
+            if (e.actionMasked != MotionEvent.ACTION_DOWN) return@setOnTouchListener false
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            row.startDragAndDrop(null, View.DragShadowBuilder(row), task, 0)
+            row.alpha = 0.3f
+            true
+        }
+        row.setOnDragListener { v, e ->
+            val moving = e.localState as? BoardTask ?: return@setOnDragListener false
+            val before = e.y < v.height / 2f
+            when (e.action) {
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    if (moving.id != task.id) {
+                        v.foreground = getDrawable(if (before) R.drawable.mb_drop_above else R.drawable.mb_drop_below)
+                    }
+                    autoScroll(v, e.y)
+                }
+                DragEvent.ACTION_DRAG_EXITED -> v.foreground = null
+                DragEvent.ACTION_DROP -> {
+                    v.foreground = null
+                    if (moving.id != task.id) moveTask(moving, task, before)
+                }
+                DragEvent.ACTION_DRAG_ENDED -> {
+                    v.foreground = null
+                    v.alpha = 1f
+                }
+            }
+            true
+        }
+    }
+
+    /** Scrolls the page while a drag is near its top or bottom edge. */
+    private fun autoScroll(v: View, y: Float) {
+        val scroll = findViewById<ScrollView>(R.id.main_scroll)
+        val at = IntArray(2).also { v.getLocationOnScreen(it) }
+        val box = IntArray(2).also { scroll.getLocationOnScreen(it) }
+        val screenY = at[1] + y
+        when {
+            screenY < box[1] + dp(80) -> scroll.scrollBy(0, -dp(14))
+            screenY > box[1] + scroll.height - dp(80) -> scroll.scrollBy(0, dp(14))
+        }
+    }
+
+    private fun moveTask(moving: BoardTask, target: BoardTask, before: Boolean) {
+        val order = openOrder(tasks).filter { it != moving.id }.toMutableList()
+        val i = order.indexOf(target.id)
+        order.add(if (i < 0) order.size else if (before) i else i + 1, moving.id)
+        optimistic { b, ts ->
+            val nts = reposition(ts, order)
+            withQueue(b, nts) to nts
+        }
+        findViewById<View>(R.id.main_scroll).performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        runAction { t -> ApiClient.reorderTasks(t, order) }
+    }
+
     /** Long-press: the same actions as the gestures, in the bottom sheet. */
     private fun showMenu(task: BoardTask) {
         val sheet = ActionSheet(
@@ -605,6 +722,9 @@ class MainActivity : Activity() {
         if (task.status == "done") {
             sheet.add(R.drawable.mb_ic_undo24, getString(R.string.undo)) { reopen(task) }
         } else {
+            if (task.id != board?.focus?.id) {
+                sheet.add(R.drawable.mb_ic_play24, getString(R.string.do_now)) { focusNow(task) }
+            }
             sheet.add(R.drawable.mb_ic_done24, getString(R.string.done_label)) { complete(task) }
             addLaterRows(sheet, task)
         }
@@ -635,14 +755,14 @@ class MainActivity : Activity() {
     }
 
     /** "✓ Done. 2 today. [Undo]" floating at the bottom for a few seconds. */
-    private fun showUndoBar(text: String, undoTask: BoardTask?) {
+    private fun showUndoBar(text: String, undo: (() -> Unit)?) {
         undoBar.removeCallbacks(hideUndo)
         undoText.text = text
-        if (undoTask != null) {
+        if (undo != null) {
             undoButton.visibility = View.VISIBLE
             undoButton.onTap {
                 undoBar.visibility = View.GONE
-                reopen(undoTask)
+                undo()
             }
         } else {
             undoButton.visibility = View.GONE

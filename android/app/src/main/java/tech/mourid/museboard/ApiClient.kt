@@ -55,6 +55,14 @@ object ApiClient {
     fun reopenTask(token: String, id: Int): Boolean =
         postAction(token, id, "reopen")
 
+    /** "Do this now": [id] becomes the focus; the old one is paused, next. */
+    fun focusTask(token: String, id: Int): Boolean =
+        postAction(token, id, "focus")
+
+    /** The queue in this order (drag to reorder). */
+    fun reorderTasks(token: String, ids: List<Int>): Boolean =
+        post(token, "/api/tasks/order", JSONObject().put("ids", org.json.JSONArray(ids)).toString())
+
     /** Muse's suggestion: apply it (its changes and new tasks) or dismiss it. */
     fun applySuggestion(token: String, id: Int): Boolean =
         post(token, "/api/suggestions/$id/apply", null)

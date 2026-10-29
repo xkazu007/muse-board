@@ -322,9 +322,75 @@ function taskRow(t) {
     go.rel = "noopener noreferrer";
     go.textContent = "↗";
     go.setAttribute("aria-label", "Open link for " + t.title);
+    go.addEventListener("click", (e) => e.stopPropagation());
     row.append(go);
   }
+  row.tabIndex = 0;
+  row.setAttribute("role", "button");
+  row.addEventListener("click", () => rowActions(t));
+  row.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") rowActions(t);
+  });
   return row;
+}
+
+/** Tap a task in Then: do it now, move it in the queue, or mark it done. */
+function rowActions(t) {
+  openSheet(t.first_step || t.title, t.first_step ? t.title : "", [
+    { label: "Do this now", run: () => focusNow(t) },
+    { label: "Move up", run: () => moveTask(t, -1) },
+    { label: "Move down", run: () => moveTask(t, 1) },
+    {
+      label: "Done",
+      run: async () => {
+        try {
+          await api("/api/tasks/" + t.id + "/complete", "POST");
+          toast("Done.", "Undo", async () => {
+            await api("/api/tasks/" + t.id + "/reopen", "POST").catch(() => {});
+            loadBoard();
+          });
+          loadBoard();
+        } catch (e) {
+          toast("Couldn't mark it done. Try again.");
+        }
+      },
+    },
+  ]);
+}
+
+/** "Do this now": it becomes the focus, the current one is paused (next). */
+async function focusNow(t) {
+  const paused = focusId;
+  const pausedTitle = $("focus-task").textContent || $("focus-step").textContent;
+  try {
+    await api("/api/tasks/" + t.id + "/focus", "POST");
+    await loadBoard();
+    if (paused) {
+      toast("Switched. " + pausedTitle + " is next.", "Undo", async () => {
+        await api("/api/tasks/" + paused + "/focus", "POST").catch(() => {});
+        loadBoard();
+      });
+    }
+  } catch (e) {
+    toast("Couldn't switch. Try again.");
+  }
+}
+
+/** Moves [t] one place up (-1) or down (+1) in the queue. */
+async function moveTask(t, step) {
+  try {
+    const { tasks } = await api("/api/tasks");
+    const order = tasks.filter((x) => x.status === "open").map((x) => x.id);
+    const i = order.indexOf(t.id);
+    const j = i + step;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    await api("/api/tasks/order", "POST", { ids: order });
+    toast(step < 0 ? "Moved up." : "Moved down.");
+    loadBoard();
+  } catch (e) {
+    toast("Couldn't move it. Try again.");
+  }
 }
 
 async function loadBoard() {

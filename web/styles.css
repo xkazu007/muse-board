@@ -211,6 +211,7 @@ button:active:not(:disabled), .pill:active, .row:active, .block-btn:active, summ
   content: ""; position: absolute; top: 0; left: 20px; right: 20px; height: 1px; background: var(--border);
 }
 .row-main { flex: 1; min-width: 0; }
+.list .row { cursor: pointer; }
 .row-title { font-size: 16px; font-weight: 700; }
 .row-sub { margin-top: 2px; font-size: 14px; color: var(--muted); }
 .row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }

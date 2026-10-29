@@ -153,6 +153,9 @@ class TaskActivity : Activity() {
         estimateClear.onTap { setEstimate(null) }
         findViewById<View>(R.id.task_done).onTap { onDoneOrUndo() }
         findViewById<View>(R.id.task_later).onTap { onLater() }
+        findViewById<View>(R.id.task_do_now).onTap {
+            task?.let { current -> runAndClose { t -> ApiClient.focusTask(t, current.id) } }
+        }
 
         // Open instantly with the task the list already had, then refresh.
         intent.getStringExtra(EXTRA_TASK_JSON)?.let { json ->
@@ -222,6 +225,8 @@ class TaskActivity : Activity() {
         val done = t.status == "done"
         findViewById<TextView>(R.id.task_done).setText(if (done) R.string.undo else R.string.done)
         findViewById<View>(R.id.task_later).visibility = if (done) View.GONE else View.VISIBLE
+        val isFocus = BoardCache.load(this)?.focus?.id == t.id
+        findViewById<View>(R.id.task_do_now).visibility = if (done || isFocus) View.GONE else View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_SHRINK, false) && !done) {
             findViewById<View>(R.id.task_shrink_hint).visibility = View.VISIBLE
