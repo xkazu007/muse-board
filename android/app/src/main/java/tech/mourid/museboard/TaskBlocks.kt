@@ -1,14 +1,22 @@
 package tech.mourid.museboard
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.text.InputFilter
+import android.text.InputType
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import android.view.Gravity
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -21,7 +29,11 @@ import org.json.JSONObject
  * checklist items the owner ticks, and toggles that expand. Built with
  * plain framework views, in the board's tokens.
  *
- * [onChange] gets the whole list after a tick, to save it back.
+ * The checklist is the task's subtasks, and the owner edits it too:
+ * "+ Add step" under the last item (Enter adds and opens the next, an empty
+ * Enter closes), long-press an item to rename or delete it.
+ *
+ * [onChange] gets the whole list after any change, to save it back.
  */
 class TaskBlocks(
     private val activity: Activity,
@@ -31,6 +43,8 @@ class TaskBlocks(
     private var blocks = JSONArray()
     /** Toggles opened on this visit, by index, kept across a refresh. */
     private val open = mutableSetOf<Int>()
+    /** The "+ Add step" input is open (kept across a re-render). */
+    private var adding = false
 
     fun show(json: String?) {
         blocks = try {
@@ -38,19 +52,163 @@ class TaskBlocks(
         } catch (_: Exception) {
             JSONArray()
         }
+        render()
+    }
+
+    private fun render() {
         container.removeAllViews()
+        var afterLastCheck = -1
         for (i in 0 until blocks.length()) {
             val b = blocks.optJSONObject(i) ?: continue
             when (b.optString("type")) {
                 "heading" -> container.addView(heading(b.optString("text")))
                 "text" -> container.addView(body(b.optString("text"), top = 8))
                 "button" -> container.addView(button(b.optString("label"), b.optString("url")))
-                "check" -> container.addView(check(b))
+                "check" -> {
+                    container.addView(check(i, b))
+                    afterLastCheck = container.childCount
+                }
                 "toggle" -> container.addView(toggle(i, b))
                 // A type this version doesn't know yet: skipped, not shown broken.
             }
         }
-        container.visibility = if (container.childCount > 0) View.VISIBLE else View.GONE
+        // "+ Add step" (or its input) right under the checklist, else last.
+        val at = if (afterLastCheck >= 0) afterLastCheck else container.childCount
+        container.addView(if (adding) stepInput() else addStepRow(), at)
+        container.visibility = View.VISIBLE
+    }
+
+    // --- Editing the checklist ----------------------------------------------
+
+    private fun addStepRow() = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = dp(48)
+        background = activity.getDrawable(R.drawable.mb_ripple_rounded)
+        setPadding(dp(8), 0, dp(8), 0)
+        addView(ImageView(activity).apply {
+            setImageResource(R.drawable.mb_ic_plus_accent24)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(dp(24), dp(24)))
+        addView(TextView(activity).apply {
+            setText(R.string.add_step)
+            setTextColor(activity.getColor(R.color.mb_accent))
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(12), 0, 0, 0)
+        })
+        pressable()
+        onTap {
+            adding = true
+            render()
+        }
+    }
+
+    private fun stepInput(): View {
+        val input = EditText(activity).apply {
+            setHint(R.string.step_hint)
+            background = activity.getDrawable(R.drawable.mb_field_bg)
+            setPadding(dp(16), 0, dp(16), 0)
+            setTextColor(activity.getColor(R.color.mb_on_surface))
+            setHintTextColor(activity.getColor(R.color.mb_muted))
+            textSize = 15f
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            imeOptions = EditorInfo.IME_ACTION_NEXT or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            filters = arrayOf(InputFilter.LengthFilter(MAX_STEP))
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+        }
+        // Each input is used once: re-rendering removes it, which also takes
+        // its focus away, and that must not add the same step twice.
+        var used = false
+        // Enter: add it and keep going; an empty Enter closes.
+        input.setOnEditorActionListener { _, _, _ ->
+            if (used) return@setOnEditorActionListener true
+            used = true
+            val text = input.text.toString().trim()
+            if (text.isEmpty()) closeInput(input) else addStep(text, keepOpen = true)
+            true
+        }
+        // Tapping elsewhere: keep what was typed, then close.
+        input.setOnFocusChangeListener { _, focused ->
+            if (focused || used || !adding) return@setOnFocusChangeListener
+            used = true
+            val text = input.text.toString().trim()
+            container.post { if (text.isEmpty()) closeInput(input) else addStep(text, keepOpen = false) }
+        }
+        input.post {
+            input.requestFocus()
+            (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        }
+        return FrameLayout(activity).apply {
+            setPadding(0, dp(4), 0, dp(4))
+            addView(input, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(48)))
+        }
+    }
+
+    private fun closeInput(input: EditText) {
+        adding = false
+        (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+            .hideSoftInputFromWindow(input.windowToken, 0)
+        render()
+    }
+
+    /** A new unticked step, right after the last one (or at the end). */
+    private fun addStep(text: String, keepOpen: Boolean) {
+        val lastCheck = (0 until blocks.length()).lastOrNull { blocks.optJSONObject(it)?.optString("type") == "check" }
+        val at = (lastCheck ?: (blocks.length() - 1)) + 1
+        val step = JSONObject().put("type", "check").put("text", text).put("done", false)
+        val next = JSONArray()
+        for (i in 0 until blocks.length()) {
+            if (i == at) next.put(step)
+            next.put(blocks.get(i))
+        }
+        if (at >= blocks.length()) next.put(step)
+        blocks = next
+        adding = keepOpen
+        onChange(blocks)
+        render()
+    }
+
+    /** Long-press a step: Rename / Delete, in the bottom sheet. */
+    private fun editStep(index: Int, b: JSONObject) {
+        ActionSheet(activity, b.optString("text"))
+            .add(R.drawable.mb_ic_edit24, activity.getString(R.string.step_rename)) { renameStep(b) }
+            .add(R.drawable.mb_ic_delete24, activity.getString(R.string.step_delete)) {
+                val next = JSONArray()
+                for (i in 0 until blocks.length()) if (i != index) next.put(blocks.get(i))
+                blocks = next
+                onChange(blocks)
+                render()
+            }
+            .show()
+    }
+
+    private fun renameStep(b: JSONObject) {
+        val input = EditText(activity).apply {
+            setText(b.optString("text"))
+            setSelection(text.length)
+            isSingleLine = true
+            filters = arrayOf(InputFilter.LengthFilter(MAX_STEP))
+        }
+        val box = FrameLayout(activity).apply {
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(input)
+        }
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.step_rename_title)
+            .setView(box)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val text = input.text.toString().trim()
+                if (text.isNotEmpty() && text != b.optString("text")) {
+                    b.put("text", text)
+                    onChange(blocks)
+                    render()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun heading(text: String) = TextView(activity).apply {
@@ -89,7 +247,7 @@ class TaskBlocks(
         onTap { openLink(activity, url) }
     }
 
-    private fun check(b: JSONObject): View {
+    private fun check(index: Int, b: JSONObject): View {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -126,6 +284,11 @@ class TaskBlocks(
             b.put("done", done)
             paint(done)
             onChange(blocks)
+        }
+        row.setOnLongClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            editStep(index, b)
+            true
         }
         return row
     }
@@ -186,4 +349,9 @@ class TaskBlocks(
     }
 
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
+
+    private companion object {
+        /** The API's limit for a check's text. */
+        const val MAX_STEP = 200
+    }
 }

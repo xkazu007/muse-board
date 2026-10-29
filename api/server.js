@@ -17,6 +17,10 @@
  *                                     PATCH, e.g. Android's HttpURLConnection)
  *   POST  /api/tasks/:id/complete  -> mark done
  *   POST  /api/tasks/:id/reopen    -> undo a "done"
+ *   POST  /api/tasks/:id/focus     -> "Do this now": it becomes the focus,
+ *                                     the old focus is paused (next in line)
+ *   POST  /api/tasks/order         -> { ids: [...] }: the queue in this order
+ *                                     (open tasks not listed keep theirs, after)
  *   POST  /api/tasks/:id/snooze    -> "Later": { until? } hides the task
  *                                     until then and re-plans it for then;
  *                                     no `until` = until tomorrow 09:00
@@ -516,13 +520,9 @@ app.get("/api/board", requireAuth, async (_req, res) => {
     // `next` becomes the focus once the current one is done or snoozed;
     // the widget uses it to update instantly on Done.
     const next = open.length > 1 ? publicTask(open[1]) : null;
-    const rest = open.slice(1);
-    rest.sort((a, b) => {
-      const da = a.due_at ? new Date(a.due_at).getTime() : Infinity;
-      const db = b.due_at ? new Date(b.due_at).getTime() : Infinity;
-      return da - db || a.position - b.position;
-    });
-    const upcoming = rest.slice(0, 3).map(publicTask);
+    // Then: the queue as the owner (or Muse) ordered it, not by deadline,
+    // so a drag or "Move up" shows everywhere.
+    const upcoming = open.slice(1, 4).map(publicTask);
     const { rows: plans } = await pool.query(PLANS_SQL);
     const { rows: doneRows } = await pool.query(
       `SELECT COUNT(*)::int AS n,
@@ -615,6 +615,46 @@ app.get("/api/tasks/:id", requireAuth, async (req, res) => {
   }
 });
 
+/** Rewrites the open tasks' positions (1, 2, 3…): [firstIds] in that
+ *  order, then every other open task as it was. Returns the new order. */
+async function reorderOpen(db, firstIds) {
+  const { rows } = await db.query(
+    "SELECT id FROM tasks WHERE status = 'open' ORDER BY position, id FOR UPDATE",
+  );
+  const listed = new Set(firstIds);
+  const order = [...firstIds, ...rows.map((r) => r.id).filter((id) => !listed.has(id))];
+  await db.query(
+    `UPDATE tasks t SET position = o.pos
+     FROM unnest($1::int[]) WITH ORDINALITY AS o(id, pos) WHERE t.id = o.id`,
+    [order],
+  );
+  return order;
+}
+
+// Drag to reorder: the client sends the queue as it now looks. Registered
+// before /api/tasks/:id so "order" isn't read as an id.
+app.post("/api/tasks/order", requireAuth, async (req, res) => {
+  const ids = (req.body || {}).ids;
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500 || !ids.every(Number.isInteger)) {
+    return res.status(400).json({ error: "ids must be a list of task ids" });
+  }
+  if (new Set(ids).size !== ids.length) return res.status(400).json({ error: "ids has duplicates" });
+  try {
+    const order = await inTransaction(async (db) => {
+      const { rows } = await db.query("SELECT id FROM tasks WHERE status = 'open' AND id = ANY($1::int[])", [ids]);
+      if (rows.length !== ids.length) return null;
+      const result = await reorderOpen(db, ids);
+      await logActivity(db, null, "reordered", sourceOf(req), { order: result });
+      return result;
+    });
+    if (!order) return res.status(400).json({ error: "every id must be an open task" });
+    res.json({ order });
+  } catch (err) {
+    console.error("POST /api/tasks/order failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
+
 app.patch("/api/tasks/:id", requireAuth, updateTask);
 app.post("/api/tasks/:id", requireAuth, updateTask);
 
@@ -646,6 +686,36 @@ app.post("/api/tasks/:id/complete", requireAuth, (req, res) =>
 app.post("/api/tasks/:id/reopen", requireAuth, (req, res) =>
   changeStatus(req, res, "status = 'open', completed_at = NULL", "done", "reopen"),
 );
+
+// "Do this now": switch to another task. It becomes the focus (first in the
+// queue, back from Later if it was snoozed); the old focus is paused, next
+// in line, with nothing lost.
+app.post("/api/tasks/:id/focus", requireAuth, async (req, res) => {
+  const id = parseId(req, res);
+  if (id === null) return;
+  try {
+    const row = await inTransaction(async (db) => {
+      const { rows } = await db.query(
+        `SELECT ${TASK_COLUMNS} FROM tasks WHERE id = $1 AND status = 'open' FOR UPDATE`,
+        [id],
+      );
+      if (rows.length === 0) return null;
+      const { rows: visible } = await db.query(OPEN_SQL);
+      const paused = visible.length && visible[0].id !== id ? visible[0].id : null;
+      if (!paused && visible.length && visible[0].id === id && !rows[0].snoozed_until) return rows[0];
+      await db.query("UPDATE tasks SET snoozed_until = NULL WHERE id = $1", [id]);
+      await reorderOpen(db, [id]);
+      await logActivity(db, id, "focused", sourceOf(req), { paused_task_id: paused });
+      const { rows: now } = await db.query(`SELECT ${TASK_COLUMNS} FROM tasks WHERE id = $1`, [id]);
+      return now[0];
+    });
+    if (!row) return res.status(404).json({ error: "task not found or not open" });
+    res.json({ task: publicTask(row) });
+  } catch (err) {
+    console.error("POST /api/tasks/:id/focus failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
+});
 
 // "Later". With `until` (a date-time in the next 14 days) the task is
 // hidden until then and its plan moves there, so the phone reminds at that

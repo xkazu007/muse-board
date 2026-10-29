@@ -184,6 +184,19 @@ name above its card is 14sp bold `muted`.
   ("First step: …", "New: …"). **Not now** (text, `muted`) and **Apply**
   (tonal pill): never the yellow fill, Done stays the only primary action.
   Both hide the card at once.
+- **Do this now**: switch tasks. In the long-press menu (first row, play
+  icon), on the task page (a tonal button above Done / Later), on the web
+  (tap a Then row), or drag a row onto the focus card (it gets a yellow
+  ring). The current focus is paused, next in line; the snackbar says
+  "Switched. <task> is next." with Undo.
+- **Reorder**: a drag handle (six dots, 40dp) at the end of each Then
+  row. Touch it to lift the row (it fades to 30%, a shadow follows the
+  finger), drop above or below another row: a 3dp yellow line shows
+  where. The page scrolls near its edges. Web: Move up / Move down in the
+  row's sheet. "Then" everywhere is in queue order.
+- **Checklist editing** (task page): "+ Add step" in `accent` under the
+  last step; it turns into a filled input, Enter adds and opens the next,
+  an empty Enter closes. Long-press a step for Rename / Delete.
 - **Checklist progress**: "✓ 2/5" (muted, 13 to 14sp) from a task's
   `check` blocks: bottom left of the focus card, under the row's detail.
 - **Too big?** A small tonal chip on a task snoozed twice since its step
@@ -223,7 +236,9 @@ Samsung too. So each gesture lives where Android allows it:
 | App icon | Long-press | Shortcuts: "Done: <first step>", "Later: 1 hour" |
 | Reminder | Action buttons | Done, Later 1h |
 | App | Swipe a card right / left | Done (primary behind it) / Later (asks when) |
-| App | Long-press a card | Menu: Done, Later choices, or Undo |
+| App | Long-press a card | Menu: Do this now, Done, Later choices, or Undo |
+| App | Drag a row's handle | Reorder; drop on the focus card to do it now |
+| App | Long-press a checklist step | Rename / Delete |
 | App | Tick the ring | Same as the widget |
 | App | Tap a card | Opens the task's detail page |
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drag a task onto the focus card to do it now: the card's yellow ring. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <stroke
+        android:width="2dp"
+        android:color="@color/mb_primary" />
+    <corners android:radius="28dp" />
+</shape>

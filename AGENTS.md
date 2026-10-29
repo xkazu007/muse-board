@@ -75,6 +75,11 @@ at my desk I open Coursera"), the best-supported technique in the research
   ask. Every task carries `snooze_count` (Laters since its first step last
   changed); at 2 the app shows "Too big? Make it smaller", and writing a new
   `first_step` resets it to 0.
+- **The owner reorders and switches.** They can drag tasks into a new
+  order and tap "Do this now" on any task: it becomes the focus and the
+  current one is paused, next in line (`focused` / `reordered` in the
+  feed). Their order wins; if a new order looks wrong, suggest, don't
+  silently undo it. They can also add, rename and delete checklist steps.
 - **The owner adds tasks too.** The app has a quick-add (title + first step,
   optional when / where) and a detail page to edit any task. Tasks added
   from the phone land at the end of the queue: give them a plan, a place or
@@ -138,7 +143,9 @@ looks like now.
   `created` (`data.fields`), `updated` (`data.changes`: field → new value;
   for checklists `data.ticked` / `data.unticked` item texts, and
   `blocks_edited`), `completed`, `reopened`, `snoozed` (`until`,
-  `snooze_count`), `suggestion_applied`, `suggestion_dismissed`. Kept 180
+  `snooze_count`), `focused` ("Do this now"; `paused_task_id`),
+  `reordered` (`order`: open task ids), `suggestion_applied`,
+  `suggestion_dismissed`. Kept 180
   days.
 - **Keep one Markdown file per task** in your own workspace (for example
   `tasks/<id>.md`): what it's for, links, what the owner did and wrote in
@@ -216,7 +223,7 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 
 | Call | Does |
 |---|---|
-| `GET /api/board` | `{ date, focus, next, upcoming[≤3], plans[], doneToday, suggestion }`, what the widget and app render (`suggestion`: the oldest pending one, or null) |
+| `GET /api/board` | `{ date, focus, next, upcoming[≤3], plans[], doneToday, suggestion }`, what the widget and app render (`upcoming`: the next three in queue order; `suggestion`: the oldest pending one, or null) |
 | `GET /api/tasks` | Every task, by position |
 | `GET /api/tasks/:id` | One task |
 | `POST /api/tasks` | Create. `title` required; any field above |
@@ -224,6 +231,8 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 | `POST /api/tasks/:id` | Same as PATCH (for clients that can't send PATCH, like the Android app) |
 | `POST /api/tasks/:id/complete` | Done |
 | `POST /api/tasks/:id/reopen` | Undo a Done |
+| `POST /api/tasks/:id/focus` | "Do this now": it becomes the focus (back from Later if snoozed); the old focus is paused, next in line |
+| `POST /api/tasks/order` | `{ "ids": [...] }`: the queue in this order (open tasks; any not listed keep their order after) |
 | `POST /api/tasks/:id/snooze` | Later. `{ "until": "<date-time, under 14 days>" }` hides it until then and moves `plan_at` there. No body: until tomorrow 09:00 |
 | `GET /api/activity` | What changed, oldest first. `?since=<id>`, `?exclude=muse`, `?limit=` (≤ 500). `{ events, last_id }` |
 | `POST /api/suggestions` | Suggest a change: `title`, `detail`, `task_id` + `changes`, and / or `new_tasks` |

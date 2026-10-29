@@ -109,6 +109,16 @@
     <string name="add_hint_link">Link (optional)</string>
     <string name="history">History</string>
     <string name="more_options">More options</string>
+    <string name="do_now">Do this now</string>
+    <string name="switched">Switched. %1$s is next.</string>
+    <string name="switched_short">Switched.</string>
+    <string name="moved_order">Order saved.</string>
+    <string name="drag_handle">Drag to reorder</string>
+    <string name="add_step">Add step</string>
+    <string name="step_hint">New step</string>
+    <string name="step_rename">Rename</string>
+    <string name="step_delete">Delete</string>
+    <string name="step_rename_title">Rename step</string>
     <string name="suggestion_apply">Apply</string>
     <string name="suggestion_dismiss">Not now</string>
     <string name="suggestion_applied">Applied.</string>
