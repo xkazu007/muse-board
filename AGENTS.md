@@ -100,8 +100,11 @@ How to use them:
 
 - **The first step stays the main thing.** Blocks are for after it: the
   next small moves, the links, the context. Don't repeat the first step.
-- **Checks are small steps**, each under 2 minutes, 3 to 7 of them. When
+- **Checks are small steps** (the board's subtasks), each under 2 minutes,
+  3 to 7 of them. The app shows progress as "✓ 2/5" on the task. When
   they're all ticked, the task is probably done or needs a new first step.
+  Prefer checks over "1a / 1b" tasks; a step that needs its own time and
+  reminder is its own task, in the same `group`.
 - **Buttons are destinations**: "Open lesson 2", "Join Zoom", "Open the
   brief". One per place, labels that start with a verb. The task's `url`
   is still its main link; a button for the same place is redundant.
@@ -120,6 +123,60 @@ How to use them:
   { "type": "toggle", "text": "Why this one first", "body": "It is 7 minutes and unlocks the week 2 quiz." }
 ]
 ```
+
+### Keeping up: the activity feed and your task notes
+
+The board logs every change and who made it. Read it to keep your own
+context current, so you know what the owner did, not just what the board
+looks like now.
+
+- **Say who you are.** Send `X-Board-Client: muse` on every call. The app
+  sends `app`, the web `web`; the feed records it.
+- **Read what changed.** `GET /api/activity?since=<last id you saw>&exclude=muse`
+  returns events oldest first, each `{ id, at, task_id, task_title, kind,
+  source, data }`, plus `last_id` to remember for next time. Kinds:
+  `created` (`data.fields`), `updated` (`data.changes`: field → new value;
+  for checklists `data.ticked` / `data.unticked` item texts, and
+  `blocks_edited`), `completed`, `reopened`, `snoozed` (`until`,
+  `snooze_count`), `suggestion_applied`, `suggestion_dismissed`. Kept 180
+  days.
+- **Keep one Markdown file per task** in your own workspace (for example
+  `tasks/<id>.md`): what it's for, links, what the owner did and wrote in
+  its notes, decisions, what got in the way. Update it from the feed. The
+  board stores the task; the file is your memory of it.
+- **Notice patterns, then suggest.** Snoozed again and again, every check
+  ticked but the task still open, notes that say what's next: those are
+  moments for a suggestion (below), not a silent rewrite.
+
+### Suggestions: propose, the owner decides
+
+When a change isn't clearly what the owner asked for, suggest it instead
+of making it. The app and web show the oldest pending suggestion as a card
+under the focus, with **Apply** and **Not now**.
+
+```bash
+curl -s -H "$AUTH" -H "X-Board-Client: muse" -H 'Content-Type: application/json' \
+  -X POST $B/api/suggestions -d '{
+  "title": "Make the NutriSynth step smaller",
+  "detail": "It moved twice; a smaller start might help.",
+  "task_id": 3,
+  "changes": { "first_step": "Open the doc and write one question", "estimate_min": 10 },
+  "new_tasks": [ { "title": "NutriSynth: send the questions", "first_step": "Open the chat with Manal" } ]
+}'
+```
+
+- `title` (≤ 120) is the card's headline, `detail` (≤ 500) one line of
+  why. `changes` (any task fields, with `task_id`) and / or `new_tasks`
+  (1 to 5 new tasks) are what **Apply** does, in one go. The card lists
+  each change for the owner ("First step: …", "New: …").
+- **One at a time, rarely.** Only the oldest pending one shows. Don't
+  queue several; a stack of proposals is pressure. A day or more apart is
+  a good rhythm unless asked.
+- Neutral and specific, like the rest: "Plan it for 21:00 at your desk?"
+  beats "You keep putting this off".
+- A dismissed suggestion is an answer. Don't re-send it; note it in the
+  task's file.
+- Things the owner asked for directly, just do; no suggestion needed.
 
 ### Recipes
 
@@ -159,7 +216,7 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 
 | Call | Does |
 |---|---|
-| `GET /api/board` | `{ date, focus, next, upcoming[≤3], plans[], doneToday }`, exactly what the widget renders |
+| `GET /api/board` | `{ date, focus, next, upcoming[≤3], plans[], doneToday, suggestion }`, what the widget and app render (`suggestion`: the oldest pending one, or null) |
 | `GET /api/tasks` | Every task, by position |
 | `GET /api/tasks/:id` | One task |
 | `POST /api/tasks` | Create. `title` required; any field above |
@@ -168,6 +225,11 @@ curl -s -H "$AUTH" -X POST $B/api/tasks/12/reopen
 | `POST /api/tasks/:id/complete` | Done |
 | `POST /api/tasks/:id/reopen` | Undo a Done |
 | `POST /api/tasks/:id/snooze` | Later. `{ "until": "<date-time, under 14 days>" }` hides it until then and moves `plan_at` there. No body: until tomorrow 09:00 |
+| `GET /api/activity` | What changed, oldest first. `?since=<id>`, `?exclude=muse`, `?limit=` (≤ 500). `{ events, last_id }` |
+| `POST /api/suggestions` | Suggest a change: `title`, `detail`, `task_id` + `changes`, and / or `new_tasks` |
+| `GET /api/suggestions` | `?status=pending` (default), `applied`, `dismissed`, `all` |
+| `POST /api/suggestions/:id/apply` | Apply it (the app's Apply) |
+| `POST /api/suggestions/:id/dismiss` | Dismiss it (the app's Not now) |
 | `GET /health` | No auth |
 
 Errors: 400 with `{ error }` for bad input (blank title, too long, bad

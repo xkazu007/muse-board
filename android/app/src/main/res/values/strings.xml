@@ -109,6 +109,11 @@
     <string name="add_hint_link">Link (optional)</string>
     <string name="history">History</string>
     <string name="more_options">More options</string>
+    <string name="suggestion_apply">Apply</string>
+    <string name="suggestion_dismiss">Not now</string>
+    <string name="suggestion_applied">Applied.</string>
+    <string name="suggestion_dismissed">Dismissed.</string>
+    <string name="progress">✓ %1$d/%2$d</string>
     <string name="detail_estimate">Takes</string>
     <string name="detail_clear_estimate">Clear time estimate</string>
     <string name="estimate_title">How long will it take?</string>

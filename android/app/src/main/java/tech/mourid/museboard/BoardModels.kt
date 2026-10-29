@@ -46,7 +46,97 @@ data class BoardResponse(
     /** Tasks with a plan in the next 36 hours, for reminders. */
     val plans: List<BoardTask>,
     val doneToday: Int,
+    /** Muse's oldest open suggestion (one at a time), or null. */
+    val suggestion: Suggestion? = null,
 )
+
+/**
+ * A change Muse proposes; the owner applies or dismisses it. [lines] says
+ * what applying does, e.g. "First step: Open the doc", "New: SA: read the
+ * brief".
+ */
+data class Suggestion(
+    val id: Int,
+    val title: String,
+    val detail: String?,
+    val taskTitle: String?,
+    val lines: List<String>,
+)
+
+private val FIELD_LABELS = mapOf(
+    "title" to "Title",
+    "first_step" to "First step",
+    "plan_at" to "When",
+    "plan_where" to "Where",
+    "due_at" to "Due",
+    "estimate_min" to "Takes",
+    "url" to "Link",
+    "group" to "Group",
+    "detail" to "Notes",
+    "position" to "Order",
+    "blocks" to "Page",
+)
+
+fun parseSuggestion(obj: JSONObject): Suggestion {
+    val lines = mutableListOf<String>()
+    obj.optJSONObject("changes")?.let { changes ->
+        for (key in changes.keys()) {
+            val label = FIELD_LABELS[key] ?: continue
+            val value = when {
+                changes.isNull(key) -> "removed"
+                key == "plan_at" || key == "due_at" -> formatLocal(changes.optString(key))
+                key == "estimate_min" -> "~" + formatMinutes(changes.optInt(key))
+                key == "blocks" -> "updated"
+                key == "position" -> if (changes.optInt(key) == 0) "make it the focus" else changes.optInt(key).toString()
+                else -> changes.optString(key)
+            }
+            lines.add("$label: $value")
+        }
+    }
+    obj.optJSONArray("new_tasks")?.let { list ->
+        for (i in 0 until list.length()) list.optJSONObject(i)?.optString("title")?.let { lines.add("New: $it") }
+    }
+    return Suggestion(
+        id = obj.getInt("id"),
+        title = obj.getString("title"),
+        detail = obj.stringOrNull("detail"),
+        taskTitle = obj.stringOrNull("task_title"),
+        lines = lines,
+    )
+}
+
+/** "2026-10-29T21:00" (Casablanca wall time, as Muse writes it) or an API
+ *  timestamp, shown like the rest of the app ("Tomorrow 21:00"). */
+private fun formatLocal(value: String): String {
+    parseIso(value)?.let { return formatWhen(value) }
+    return try {
+        val millis = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US).apply { timeZone = CASABLANCA }
+            .parse(value.take(16))!!.time
+        formatWhen(toIso(millis))
+    } catch (_: Exception) {
+        value
+    }
+}
+
+/** Checklist progress from a task's blocks: (ticked, total), or null when
+ *  it has no checklist. Shown as "✓ 2/5". */
+fun checkProgress(blocks: String?): Pair<Int, Int>? {
+    if (blocks.isNullOrEmpty()) return null
+    return try {
+        val list = JSONArray(blocks)
+        var total = 0
+        var done = 0
+        for (i in 0 until list.length()) {
+            val b = list.optJSONObject(i) ?: continue
+            if (b.optString("type") != "check") continue
+            total++
+            if (b.optBoolean("done")) done++
+        }
+        if (total == 0) null else done to total
+    } catch (_: Exception) {
+        null
+    }
+}
 
 /** The board's zone. Device tz data decides the offset (UTC+0 since
  *  2026-09-20), so times match the phone's clock. */
@@ -113,6 +203,7 @@ fun parseBoard(obj: JSONObject): BoardResponse = BoardResponse(
     upcoming = obj.tasks("upcoming"),
     plans = obj.tasks("plans"),
     doneToday = obj.optInt("doneToday", 0),
+    suggestion = obj.optJSONObject("suggestion")?.let { parseSuggestion(it) },
 )
 
 // --- Time ------------------------------------------------------------------

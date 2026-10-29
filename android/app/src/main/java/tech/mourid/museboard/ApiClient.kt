@@ -55,12 +55,21 @@ object ApiClient {
     fun reopenTask(token: String, id: Int): Boolean =
         postAction(token, id, "reopen")
 
+    /** Muse's suggestion: apply it (its changes and new tasks) or dismiss it. */
+    fun applySuggestion(token: String, id: Int): Boolean =
+        post(token, "/api/suggestions/$id/apply", null)
+
+    fun dismissSuggestion(token: String, id: Int): Boolean =
+        post(token, "/api/suggestions/$id/dismiss", null)
+
     private fun get(token: String, url: String): String? {
         var connection: HttpURLConnection? = null
         return try {
             connection = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Authorization", "Bearer $token")
+                // Who's writing, for the activity feed Muse reads.
+                setRequestProperty("X-Board-Client", "app")
                 setRequestProperty("Accept", "application/json")
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
@@ -87,6 +96,8 @@ object ApiClient {
             connection = (URL("$BASE_URL$path").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Authorization", "Bearer $token")
+                // Who's writing, for the activity feed Muse reads.
+                setRequestProperty("X-Board-Client", "app")
                 doOutput = true
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS

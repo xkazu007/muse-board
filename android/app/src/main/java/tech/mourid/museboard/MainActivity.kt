@@ -253,6 +253,11 @@ class MainActivity : Activity() {
             focusMetaView.text = planLine(focus)
             findViewById<TextView>(R.id.focus_due).showDueChip(focus)
             findViewById<TextView>(R.id.focus_estimate).showEstimateChip(focus)
+            val progress = checkProgress(focus.blocks)
+            findViewById<TextView>(R.id.focus_progress).text =
+                progress?.let { getString(R.string.progress, it.first, it.second) }.orEmpty()
+            findViewById<View>(R.id.focus_bottom).visibility =
+                if (progress != null || focus.estimateMin != null) View.VISIBLE else View.GONE
             focusStep.text = focus.firstStep ?: focus.title
             focusTask.text = if (focus.firstStep != null) focus.title else focus.detail.orEmpty()
             focusCheck.visibility = View.VISIBLE
@@ -264,7 +269,7 @@ class MainActivity : Activity() {
         } else {
             focusMetaView.text = ""
             findViewById<View>(R.id.focus_due).visibility = View.GONE
-            findViewById<View>(R.id.focus_estimate).visibility = View.GONE
+            findViewById<View>(R.id.focus_bottom).visibility = View.GONE
             focusStep.setText(R.string.all_clear)
             val comingBack = b.plans.firstOrNull()
             focusTask.text = if (comingBack != null) {
@@ -280,6 +285,7 @@ class MainActivity : Activity() {
             focusRow.onSwipeLeft = null
         }
         gestureHint.visibility = if (focus != null && !hintSeen()) View.VISIBLE else View.GONE
+        showSuggestion(b.suggestion)
 
         val now = System.currentTimeMillis()
         val open = tasks.filter { it.status == "open" }
@@ -355,6 +361,34 @@ class MainActivity : Activity() {
         setPadding(dp(8), dp(if (first) 0 else 16), 0, dp(8))
     }
 
+    /** Muse's suggestion card: what it proposes and what applying changes.
+     *  Apply / Not now hide it at once; the server catches up. */
+    private fun showSuggestion(s: Suggestion?) {
+        val card = findViewById<View>(R.id.suggestion_card)
+        if (s == null) {
+            card.visibility = View.GONE
+            return
+        }
+        card.visibility = View.VISIBLE
+        findViewById<TextView>(R.id.suggestion_title).text = s.title
+        findViewById<TextView>(R.id.suggestion_detail).apply {
+            text = s.detail
+            visibility = if (s.detail.isNullOrEmpty()) View.GONE else View.VISIBLE
+        }
+        findViewById<TextView>(R.id.suggestion_lines).apply {
+            text = s.lines.joinToString("\n")
+            visibility = if (s.lines.isEmpty()) View.GONE else View.VISIBLE
+        }
+        findViewById<View>(R.id.suggestion_apply).onTap { resolveSuggestion(s, apply = true) }
+        findViewById<View>(R.id.suggestion_dismiss).onTap { resolveSuggestion(s, apply = false) }
+    }
+
+    private fun resolveSuggestion(s: Suggestion, apply: Boolean) {
+        optimistic { b, ts -> b.copy(suggestion = null) to ts }
+        showUndoBar(getString(if (apply) R.string.suggestion_applied else R.string.suggestion_dismissed), null)
+        runAction { t -> if (apply) ApiClient.applySuggestion(t, s.id) else ApiClient.dismissSuggestion(t, s.id) }
+    }
+
     /** "Too big?" (issue #7): Later used twice since the step last changed. */
     private fun tooBig(task: BoardTask): Boolean = task.status == "open" && task.snoozeCount >= 2
 
@@ -380,8 +414,10 @@ class MainActivity : Activity() {
                 text = name ?: getString(R.string.group_all)
                 gravity = Gravity.CENTER
                 textSize = 14f
-                setPadding(dp(16), 0, dp(16), 0)
+                // Background first: the inset drawable's own padding would
+                // otherwise replace ours.
                 background = getDrawable(if (selected) R.drawable.mb_chip_selected_inset else R.drawable.mb_chip_tonal_inset)
+                setPadding(dp(16), 0, dp(16), 0)
                 setTextColor(getColor(if (selected) R.color.mb_on_primary else R.color.mb_on_surface))
                 pressable()
                 onTap {
@@ -431,6 +467,11 @@ class MainActivity : Activity() {
             })
             row.findViewById<TextView>(R.id.task_estimate).apply {
                 if (kind == Kind.DONE) visibility = View.GONE else showEstimateChip(task)
+            }
+            row.findViewById<TextView>(R.id.task_progress).apply {
+                val progress = if (kind == Kind.DONE) null else checkProgress(task.blocks)
+                visibility = if (progress == null) View.GONE else View.VISIBLE
+                text = progress?.let { getString(R.string.progress, it.first, it.second) }
             }
             row.findViewById<View>(R.id.task_too_big).apply {
                 visibility = if (tooBig(task)) View.VISIBLE else View.GONE

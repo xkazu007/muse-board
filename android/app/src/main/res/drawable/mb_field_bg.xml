@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Text field: filled, no outline (like One UI's own sheets). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/mb_page" />
-    <corners android:radius="14dp" />
-    <stroke android:width="1dp" android:color="@color/mb_muted" />
+    <solid android:color="@color/mb_inset" />
+    <corners android:radius="16dp" />
 </shape>
